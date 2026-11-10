@@ -56,9 +56,10 @@ missing. Install your scanner's own driver if it needs one (Settings › Scanner
 ## Publishing an update
 
 1. Raise `VERSION` in `WhatTheScan.pyw` (for example to `1.0.2`) and update `RELEASE_NOTES.md`.
-2. Commit, then push a tag with the same version: `git tag v1.0.2 && git push origin v1.0.2`.
-3. GitHub Actions builds the Windows .exe and the Linux binary and publishes the release with
-   all files and their `.sha256` checksums.
+2. Commit and push to `main`.
+3. If release `v1.0.2` doesn't exist yet, GitHub Actions builds the Windows .exe and the Linux
+   binary and publishes the release (it creates the tag itself), with all files and their
+   `.sha256` checksums.
 
 Every copy (.exe, Linux binary or .pyw) finds its own file in the release and offers the update
 from **Help › Check for updates**. It can also check by itself on startup.
