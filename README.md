@@ -1,0 +1,70 @@
+<p align="center"><img src="assets/WhatTheScan-logo.png" alt="What the Scan?!" width="520"></p>
+
+<p align="center"><b>Scanner busy? Now you know who.</b><br>
+Scan to PDF, JPG, Word or OpenDocument from Epson, Canon &amp; HP scanners, with OCR, translation
+and a status light that shows when someone else on the network is using the scanner.</p>
+
+<p align="center">
+<img src="assets/screenshots/main-en-dark.png" width="48%">
+<img src="assets/screenshots/main-gr-light.png" width="48%">
+</p>
+
+## Features
+
+- **One-click scanning.** It finds every scanner on every driver (TWAIN, WIA, eSCL, SANE, Apple) at the same time and connects automatically.
+- **Output formats:**
+  - PDF, JPG or PDF + JPG
+  - an optional editable document: Word (.docx) or OpenDocument (.odt)
+- **Status light:**
+  - 🟢 ready
+  - 🟡 idle
+  - 🔴 in use: by you, by another PC on the network running the app, or by the scanner itself (eSCL status)
+  - Anyone who tries to scan while the light is red gets a clear "please wait" message and a beep when the scanner is free.
+- **OCR (searchable PDFs).**
+  - Languages are chosen automatically (English + Greek + your system language), or you pick them by hand.
+  - Languages download automatically the first time they are used.
+- **Translation** of the recognised text with Google Translate (free), MyMemory (free) or your own LibreTranslate server, either automatically after every scan or from the Text window.
+- **Paper source "Auto":** uses the document feeder when it has paper, otherwise the flatbed glass.
+- **English / Ελληνικά**, **Auto / Light / Dark** theme.
+- **Drivers:**
+  - Epson L14150 and Canon PIXMA TS3150: one-click driver install, with the publisher signature checked.
+  - Other Epson, Canon and HP models (2024–2026): the Driver setup button opens the right driver page.
+- **Over-the-air updates** from this repository's GitHub releases (SHA-256 checked).
+
+## Install
+
+Download from the [latest release](https://github.com/nikkpap/What_the_Scan-/releases/latest):
+
+| System | File | How |
+|---|---|---|
+| Windows 10/11 (64-bit) | `WhatTheScan-windows-x64.exe` | Double-click it. If SmartScreen appears: *More info › Run anyway*. |
+| Linux (x64) | `WhatTheScan-linux-x64` | `chmod +x WhatTheScan-linux-x64`, then open it. |
+| macOS, or any OS with Python 3 | `WhatTheScan.pyw` | Double-click it. It installs PyQt6, PyMuPDF and python-docx itself. |
+
+The first start installs the [NAPS2](https://www.naps2.com) scanning engine automatically, if it is
+missing. Install your scanner's own driver if it needs one (Settings › Scanner › Driver setup).
+
+## Εγκατάσταση (Ελληνικά)
+
+- **Windows:** κατέβασε το `WhatTheScan-windows-x64.exe` από το [τελευταίο release](https://github.com/nikkpap/What_the_Scan-/releases/latest) και άνοιξέ το.
+- **Linux:** κατέβασε το `WhatTheScan-linux-x64`, δώσε `chmod +x` και άνοιξέ το.
+- **Mac ή οτιδήποτε με Python 3:** κατέβασε το `WhatTheScan.pyw` και άνοιξέ το.
+
+Την πρώτη φορά εγκαθιστά μόνο του ό,τι χρειάζεται. Πάτα **Σάρωση** και τα αρχεία αποθηκεύονται στα
+*Έγγραφα › What the Scan*. Όλες οι ρυθμίσεις είναι αυτόματες από προεπιλογή και αλλάζουν από τις **Ρυθμίσεις**.
+
+## Publishing an update
+
+1. Raise `VERSION` in `WhatTheScan.pyw` (for example to `1.0.2`) and update `RELEASE_NOTES.md`.
+2. Commit, then push a tag with the same version: `git tag v1.0.2 && git push origin v1.0.2`.
+3. GitHub Actions builds the Windows .exe and the Linux binary and publishes the release with
+   all files and their `.sha256` checksums.
+
+Every copy (.exe, Linux binary or .pyw) finds its own file in the release and offers the update
+from **Help › Check for updates**. It can also check by itself on startup.
+
+## Credits
+
+Made by **Nikolaos K. Paridis** ([nikkpap](https://github.com/nikkpap)), ALU DEV TEAM.
+
+Built with NAPS2 (GPL) and Tesseract OCR, PyMuPDF, python-docx and PyQt6.
