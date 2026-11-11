@@ -76,8 +76,49 @@ jobs:
             echo "::error::The first start hit a code error."; exit 1
           fi
 
+  linux-distros:
+    # First start of the .pyw on fresh distributions with only Python: the app itself must install
+    # pip, PyQt6 & co, the window libraries and NAPS2 (as root here, like after the password prompt).
+    needs: version
+    if: needs.version.outputs.exists == 'false'
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["debian:12", "ubuntu:24.04", "fedora:41"]
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    steps:
+      - name: Only Python (no pip, no tk, no window libraries, no NAPS2)
+        run: |
+          if command -v apt-get >/dev/null; then
+            apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3 ca-certificates > /dev/null
+          else
+            dnf install -y -q python3 ca-certificates
+          fi
+          python3 --version
+          python3 -m pip --version || echo "no pip (as expected)"
+
+      - uses: actions/checkout@v4
+
+      - name: First start installs everything by itself
+        shell: bash
+        run: |
+          set +e
+          mkdir -p /tmp/home
+          env -i PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" HOME=/tmp/home \
+            QT_QPA_PLATFORM=offscreen timeout 900 python3 WhatTheScan.pyw > startup.log 2>&1
+          code=$?
+          set -e
+          cat startup.log
+          echo "exit code: $code (124 = the app was still running = started fine)"
+          if grep -E "Traceback|NameError|is not defined|AttributeError|Scanner setup:" startup.log; then
+            echo "::error::First start failed on ${{ matrix.image }}"; exit 1
+          fi
+          command -v naps2 || { echo "::error::NAPS2 was not installed"; exit 1; }
+          [ "$code" = "124" ] || [ "$code" = "0" ] || { echo "::error::unexpected exit code $code"; exit 1; }
+
   build:
-    needs: [version, test]
+    needs: [version, test, linux-distros]
     if: needs.version.outputs.exists == 'false'
     strategy:
       fail-fast: false

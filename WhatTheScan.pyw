@@ -23,7 +23,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from queue import Empty, Queue
 
-VERSION = "1.0.6"
+VERSION = "1.0.7"
 # Change this one line to rename the app everywhere.
 APP_NAME = "What the Scan?!"
 APP_TAGLINE = "Scanner busy? Now you know who."
@@ -853,10 +853,15 @@ def windows_python(report):
 
 
 LINUX_QT_LIBS = {  # system libraries PyQt6 (Qt 6) needs on Linux
-    "apt-get": ["libegl1", "libgl1", "libxkbcommon-x11-0", "libxcb-cursor0", "libxcb-icccm4",
-                "libxcb-keysyms1", "libxcb-shape0", "libdbus-1-3", "libfontconfig1"],
-    "dnf": ["mesa-libEGL", "mesa-libGL", "libxkbcommon-x11", "xcb-util-cursor", "xcb-util-wm",
-            "xcb-util-keysyms", "dbus-libs", "fontconfig"],
+    "apt-get": ["libegl1", "libgl1", "libglib2.0-0", "libfreetype6", "libfontconfig1", "libdbus-1-3",
+                "libxkbcommon0", "libxkbcommon-x11-0", "libx11-6", "libx11-xcb1", "libxcb1", "libxcb-cursor0",
+                "libxcb-icccm4", "libxcb-image0", "libxcb-keysyms1", "libxcb-randr0", "libxcb-render-util0",
+                "libxcb-shape0", "libxcb-xinerama0", "libxcb-xkb1", "libxrender1", "libxi6", "libsm6",
+                "libice6", "libxext6"],
+    "dnf": ["mesa-libEGL", "mesa-libGL", "glib2", "freetype", "fontconfig", "dbus-libs", "libxkbcommon",
+            "libxkbcommon-x11", "libX11", "libX11-xcb", "libxcb", "xcb-util-cursor", "xcb-util-wm",
+            "xcb-util-image", "xcb-util-keysyms", "xcb-util-renderutil", "libXrender", "libXi", "libSM",
+            "libICE", "libXext"],
 }
 
 
@@ -867,21 +872,7 @@ def missing_library(text):
 
 def install_linux_qt_libs(report, library):
     """Install the system libraries Qt needs (asks for the administrator password)."""
-    manager = shutil.which("apt-get") or shutil.which("dnf")
-    if not manager:
-        return False
-    packages = LINUX_QT_LIBS[Path(manager).name]
-    report(f"Installing system libraries for the window ({library})…")
-    command = [manager, "-y", "install", *packages]
-    if os.geteuid() != 0:
-        pkexec = shutil.which("pkexec")
-        if not pkexec:
-            return False
-        command.insert(0, pkexec)
-    try:
-        return run_hidden(command, stdin=subprocess.DEVNULL, capture_output=True, timeout=900).returncode == 0
-    except (OSError, subprocess.TimeoutExpired):
-        return False
+    return linux_system_install(LINUX_QT_LIBS, report, f"system libraries for the window ({library})")
 
 
 def linux_qt_hint(library):
@@ -889,6 +880,65 @@ def linux_qt_hint(library):
     tool = "apt" if manager == "apt-get" else "dnf"
     return (f"The window library PyQt6 needs a system file that is missing ({library}). "
             f"Install it with:  sudo {tool} install {' '.join(LINUX_QT_LIBS[manager])}")
+
+
+LINUX_PIP_PACKAGES = {"apt-get": ["python3-pip", "python3-tk"], "dnf": ["python3-pip", "python3-tkinter"]}
+
+
+def linux_system_install(packages_by_manager, report, label):
+    """Install distribution packages with apt-get or dnf (asks for the administrator password)."""
+    manager = shutil.which("apt-get") or shutil.which("dnf")
+    if not manager:
+        return False
+    report(f"Installing {label}…")
+    command = [manager, "-y", "install", *packages_by_manager[Path(manager).name]]
+    if os.geteuid() != 0:
+        pkexec = shutil.which("pkexec")
+        if not pkexec:
+            return False
+        command.insert(0, pkexec)
+    env = dict(os.environ, DEBIAN_FRONTEND="noninteractive")
+
+    def run(args, timeout=900):
+        try:
+            return run_hidden(args, stdin=subprocess.DEVNULL, capture_output=True, env=env,
+                              timeout=timeout).returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            return False
+
+    if Path(manager).name == "apt-get" and os.geteuid() == 0:
+        run([manager, "update", "-qq"], 600)
+    if run(command):
+        return True
+    # One unknown package name (they differ between distributions) fails the whole command:
+    # install what exists one by one.
+    prefix = command[:command.index("install") + 1]
+    results = [run(prefix + [package], 600) for package in packages_by_manager[Path(manager).name]]
+    return any(results)
+
+
+def pip_works():
+    try:
+        return run_hidden([sys.executable, "-m", "pip", "--version"], capture_output=True, timeout=30).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def ensure_pip(report):
+    """pip is needed to install PyQt6 & co. Debian/Ubuntu's system Python often has no pip and disables ensurepip."""
+    if pip_works():
+        return
+    report("Preparing pip…")
+    try:
+        run_hidden([sys.executable, "-m", "ensurepip", "--upgrade"], capture_output=True, timeout=180)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    if pip_works():
+        return
+    if LINUX and linux_system_install(LINUX_PIP_PACKAGES, report, "pip for Python") and pip_works():
+        return
+    hint = "sudo apt install python3-pip" if shutil.which("apt-get") else "sudo dnf install python3-pip"
+    raise RuntimeError(f"Python's package installer (pip) is missing. Install it with:  {hint}")
 
 
 def bootstrap(report):
@@ -916,9 +966,7 @@ def bootstrap(report):
     env = dict(os.environ, PYTHONPATH=os.pathsep.join(sys.path))
     probe = [sys.executable, "-c", "from PyQt6.QtWidgets import QApplication; import pymupdf, docx"]
     if run_hidden(probe, env=env, capture_output=True, timeout=30).returncode:
-        if run_hidden([sys.executable, "-m", "pip", "--version"],
-                      capture_output=True, timeout=30).returncode:
-            run_hidden([sys.executable, "-m", "ensurepip"], check=True, timeout=180)
+        ensure_pip(report)
         command = [sys.executable, "-m", "pip", "install", "--disable-pip-version-check",
                    "--no-input", "--only-binary=:all:", "--upgrade", "--target", str(QT_CACHE), *PIP_PACKAGES]
         wheels = offline_wheels()
@@ -950,6 +998,46 @@ def bootstrap(report):
     return False
 
 
+def text_progress():
+    """Setup progress when tkinter is missing: a desktop progress window (zenity) on Linux, else the terminal."""
+    zenity = shutil.which("zenity") if LINUX and (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")) else None
+    window = None
+    if zenity:
+        try:
+            window = subprocess.Popen([zenity, "--progress", "--pulsate", "--auto-close", "--no-cancel",
+                                       "--width=420", f"--title={APP_NAME} · Setup", "--text=Preparing…"],
+                                      stdin=subprocess.PIPE, text=True)
+        except OSError:
+            window = None
+
+    def report(value):
+        print(value, file=sys.stderr)
+        if window and window.poll() is None:
+            try:
+                window.stdin.write(f"# {value}\n")
+                window.stdin.flush()
+            except OSError:
+                pass
+
+    def close():
+        if window and window.poll() is None:
+            try:
+                window.stdin.close()
+                window.wait(timeout=5)
+            except (OSError, subprocess.TimeoutExpired):
+                window.kill()
+
+    def fail(message):
+        if WINDOWS:
+            ctypes.windll.user32.MessageBoxW(None, message, "Scanner setup", 0x10)
+            return
+        print(f"Scanner setup: {message}", file=sys.stderr)
+        if zenity:
+            subprocess.run([zenity, "--error", f"--title={APP_NAME} · Setup", f"--text={message}"], check=False)
+
+    return report, close, fail
+
+
 def setup_splash():
     try:
         import tkinter as tk
@@ -958,14 +1046,15 @@ def setup_splash():
     except Exception as error:
         if not isinstance(error, ImportError) and error.__class__.__name__ != "TclError":
             raise
+        report, close, fail = text_progress()
         try:
-            return bootstrap(lambda value: print(value, file=sys.stderr))
+            result = bootstrap(report)
         except Exception as exc:
-            if WINDOWS:
-                ctypes.windll.user32.MessageBoxW(None, str(exc), "Scanner setup", 0x10)
-            else:
-                print(f"Scanner setup: {exc}", file=sys.stderr)
+            close()
+            fail(str(exc))
             raise SystemExit(1)
+        close()
+        return result
 
     root.title(f"{APP_NAME} · Setup")
     root.configure(bg="#2e1065")
