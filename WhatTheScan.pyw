@@ -23,7 +23,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from queue import Empty, Queue
 
-VERSION = "1.0.7"
+VERSION = "1.0.8"
 # Change this one line to rename the app everywhere.
 APP_NAME = "What the Scan?!"
 APP_TAGLINE = "Scanner busy? Now you know who."
@@ -52,6 +52,18 @@ PRESENCE_PORT = 47391
 PRESENCE_HEARTBEAT = 2.0
 PRESENCE_EXPIRY = 8.0
 RESTART_ENV = "NETWORK_SCAN_RESTARTED"
+# Release checks: set to a file path and the app writes its progress there, opens the window, looks for
+# scanners, writes "OK window started" and closes by itself (no dialogs, no update check).
+SMOKE_FILE = os.environ.get("WHATTHESCAN_SMOKE_TEST", "")
+
+
+def smoke(line):
+    if SMOKE_FILE:
+        try:
+            with open(SMOKE_FILE, "a", encoding="utf-8") as out:
+                out.write(f"{line}\n")
+        except OSError:
+            pass
 QT_CACHE = (Path.home() / ".epson-network-scan" /
             f"qt-{sys.implementation.cache_tag}-{platform.machine()}")
 if QT_CACHE.is_dir():
@@ -1039,6 +1051,15 @@ def text_progress():
 
 
 def setup_splash():
+    if SMOKE_FILE:
+        smoke(f"start v{VERSION} on {sys.platform} {platform.machine()} (frozen={FROZEN})")
+        try:
+            result = bootstrap(lambda value: (print(value, file=sys.stderr), smoke(value)))
+        except Exception as exc:
+            smoke(f"SETUP FAILED: {exc}")
+            raise SystemExit(1)
+        smoke("setup done")
+        return result
     try:
         import tkinter as tk
         from tkinter import ttk
@@ -1134,7 +1155,7 @@ if __name__ == "__main__":
 
 from string import Template
 
-from PyQt6.QtCore import QPoint, QPointF, QProcess, QRect, QRectF, QSettings, QSize, QTimer, Qt, QUrl
+from PyQt6.QtCore import QPoint, QPointF, QProcess, QRect, QRectF, QSettings, QSize, QStandardPaths, QTimer, Qt, QUrl
 from PyQt6.QtGui import (
     QBrush, QColor, QDesktopServices, QGuiApplication, QIcon, QImage, QKeySequence, QLinearGradient,
     QPainter, QPainterPath, QPalette, QPen, QPixmap, QRadialGradient, QShortcut,
@@ -1450,23 +1471,32 @@ def install_release(info):
     target = app_path()
     if not os.access(target.parent, os.W_OK):
         raise ValueError(UPDATE_NO_PERMISSION)
-    with tempfile.NamedTemporaryFile(dir=target.parent, delete=False) as staging:
-        staged = Path(staging.name)
-        staging.write(payload)
+    staged = None
     try:
+        # (os.access can't see Windows folder permissions, e.g. Program Files: PermissionError lands below.)
+        with tempfile.NamedTemporaryFile(dir=target.parent, delete=False) as staging:
+            staged = Path(staging.name)
+            staging.write(payload)
         if FROZEN:
             # A running program can't be overwritten on Windows, but it can be renamed out of the way.
             old = target.with_name(target.name + ".old")
             old.unlink(missing_ok=True)
             target.replace(old)
-            staged.replace(target)
+            try:
+                staged.replace(target)
+            except OSError:
+                old.replace(target)  # put the working program back
+                raise
             if not WINDOWS:
                 target.chmod(0o755)
         else:
             shutil.copy2(target, target.with_suffix(target.suffix + ".bak"))
             staged.replace(target)
+    except PermissionError:
+        raise ValueError(UPDATE_NO_PERMISSION)
     finally:
-        staged.unlink(missing_ok=True)
+        if staged is not None:
+            staged.unlink(missing_ok=True)
     return target
 
 
@@ -1565,7 +1595,7 @@ STYLE_TEMPLATE = Template("""
     QComboBox:focus, QPushButton:focus, QLineEdit:focus { border: 1px solid $focus; }
     QComboBox { padding-right: 34px; }
     QComboBox::drop-down { subcontrol-origin: padding; subcontrol-position: center right; width: 30px; border: none; }
-    QComboBox::down-arrow { image: url($chevron); width: 12px; height: 12px; }
+    QComboBox::down-arrow { image: url("$chevron"); width: 12px; height: 12px; }
     QComboBox QAbstractItemView { background: $card; color: $text; border: 1px solid $border; padding: 4px;
                                   selection-background-color: $accent; selection-color: white; outline: none; }
     QPushButton#ghost { background: transparent; border: 1px solid transparent; }
@@ -1613,7 +1643,7 @@ STYLE_TEMPLATE = Template("""
     QRadioButton:disabled, QCheckBox:disabled { color: $dis_fg; }
     QCheckBox::indicator { width: 16px; height: 16px; border-radius: 5px;
                            border: 2px solid $input_border; background: $input; }
-    QCheckBox::indicator:checked { background: $accent; border-color: $accent; image: url($check); }
+    QCheckBox::indicator:checked { background: $accent; border-color: $accent; image: url("$check"); }
     QMenu { background: $card; border: 1px solid $border; padding: 5px; border-radius: 10px; }
     QMenu::item { padding: 8px 24px 8px 12px; border-radius: 6px; }
     QMenu::item:selected { background: $hover; color: $text; }
@@ -2477,7 +2507,8 @@ class Scanner(QWidget):
         widget.style().polish(widget)
 
     def output_folder(self):
-        default = Path.home() / "Documents" / "What the Scan"
+        documents = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DocumentsLocation)
+        default = Path(documents or Path.home() / "Documents") / "What the Scan"
         return Path(self.settings.value("output_folder", str(default)) or default)
 
     def busy(self):
@@ -3435,7 +3466,8 @@ class Scanner(QWidget):
     def startup(self):
         self.detect_network()
         self.discover()
-        if self.settings.value("auto_update", True, type=bool) and not os.environ.get(RESTART_ENV):
+        if (self.settings.value("auto_update", True, type=bool) and not os.environ.get(RESTART_ENV)
+                and not SMOKE_FILE):
             QTimer.singleShot(4000, self.check_updates)
 
     def discover(self):
@@ -4084,4 +4116,18 @@ if __name__ == "__main__":
     window.resize(900, 520)
     window.show()
     QTimer.singleShot(0, window.startup)
+    if SMOKE_FILE:
+        started = time.monotonic()
+
+        def smoke_done():
+            if (window.discoveries or not window.searched_once) and time.monotonic() - started < 40:
+                QTimer.singleShot(500, smoke_done)
+                return
+            smoke(f"OK window started · {window.device.count()} scanner(s) · status: {window.status_text()}")
+            app.exit(0)
+
+        default_hook = sys.excepthook
+        sys.excepthook = lambda kind, value, tb: (smoke(f"ERROR {kind.__name__}: {value}"),
+                                                  default_hook(kind, value, tb))
+        QTimer.singleShot(1500, smoke_done)
     sys.exit(app.exec())

@@ -45,9 +45,15 @@ jobs:
           fi
 
   test:
+    # First start of the .pyw on a fresh Windows and Ubuntu machine: the app installs PyQt6 & co and
+    # NAPS2 by itself, opens its window and closes (smoke mode). Also checks the setup code order.
     needs: version
     if: needs.version.outputs.exists == 'false'
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -58,23 +64,15 @@ jobs:
       - name: Setup code only uses names defined before it
         run: python tools/check_order.py WhatTheScan.pyw
 
-      - name: First start on a clean PC (no NAPS2) reaches the installer without code errors
+      - name: Window libraries (a desktop Linux has them; the bare test machine does not)
+        if: runner.os == 'Linux'
         run: |
-          # A desktop Linux already has these window libraries; the bare test machine does not.
           sudo apt-get update -qq
           sudo apt-get install -y -qq libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 \
             libxcb-keysyms1 libxcb-shape0 libdbus-1-3 libfontconfig1 > /dev/null
-          pip install "PyQt6>=6.6,<7" "PyMuPDF>=1.24,<2" "python-docx>=1.1"
-          mkdir -p /tmp/home
-          set +e
-          env -i PATH="$PATH" HOME=/tmp/home QT_QPA_PLATFORM=offscreen timeout 300 \
-            python WhatTheScan.pyw > startup.log 2>&1
-          set -e
-          cat startup.log
-          grep -q "Installing NAPS2" startup.log
-          if grep -E "Traceback|NameError|is not defined|AttributeError|ImportError" startup.log; then
-            echo "::error::The first start hit a code error."; exit 1
-          fi
+
+      - name: First start installs everything and opens the window
+        run: python tools/smoke.py python WhatTheScan.pyw
 
   linux-distros:
     # First start of the .pyw on fresh distributions with only Python: the app itself must install
@@ -100,25 +98,15 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: First start installs everything by itself
-        shell: bash
+      - name: First start installs everything by itself and opens the window
         run: |
-          set +e
           mkdir -p /tmp/home
           env -i PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" HOME=/tmp/home \
-            QT_QPA_PLATFORM=offscreen timeout 900 python3 WhatTheScan.pyw > startup.log 2>&1
-          code=$?
-          set -e
-          cat startup.log
-          echo "exit code: $code (124 = the app was still running = started fine)"
-          if grep -E "Traceback|NameError|is not defined|AttributeError|Scanner setup:" startup.log; then
-            echo "::error::First start failed on ${{ matrix.image }}"; exit 1
-          fi
-          command -v naps2 || { echo "::error::NAPS2 was not installed"; exit 1; }
-          [ "$code" = "124" ] || [ "$code" = "0" ] || { echo "::error::unexpected exit code $code"; exit 1; }
+            python3 tools/smoke.py python3 WhatTheScan.pyw
+          command -v naps2
 
   build:
-    needs: [version, test, linux-distros]
+    needs: version
     if: needs.version.outputs.exists == 'false'
     strategy:
       fail-fast: false
@@ -243,6 +231,27 @@ jobs:
           if ($code) { exit $code }
           Get-AuthenticodeSignature "dist\${{ matrix.asset }}" | Format-List Status, StatusMessage, SignerCertificate
 
+      - name: Smoke test the Windows .exe (installs NAPS2 itself, opens the window)
+        if: runner.os == 'Windows'
+        run: python tools/smoke.py "dist\\${{ matrix.asset }}"
+
+      - name: Smoke test the Linux binary
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 \
+            libxcb-keysyms1 libxcb-shape0 libdbus-1-3 libfontconfig1 > /dev/null
+          curl -sSL -o /tmp/naps2.deb https://github.com/cyanfish/naps2/releases/download/v8.6.0/naps2-8.6.0-linux-x64.deb
+          sudo apt-get install -y -qq /tmp/naps2.deb > /dev/null
+          python tools/smoke.py "dist/${{ matrix.asset }}"
+
+      - name: Smoke test the macOS app
+        if: runner.os == 'macOS'
+        run: |
+          curl -sSL -o /tmp/naps2.pkg https://github.com/cyanfish/naps2/releases/download/v8.6.0/naps2-8.6.0-mac-univ.pkg
+          sudo installer -pkg /tmp/naps2.pkg -target / > /dev/null
+          python tools/smoke.py --no-offscreen "dist/What the Scan.app/Contents/MacOS/What the Scan"
+
       - name: Checksum
         shell: bash
         run: |
@@ -257,7 +266,7 @@ jobs:
           path: dist/${{ matrix.asset }}*
 
   offline:
-    needs: [version, test]
+    needs: version
     if: needs.version.outputs.exists == 'false'
     runs-on: ubuntu-latest
     steps:
@@ -281,7 +290,7 @@ jobs:
           compression-level: 0
 
   release:
-    needs: [version, build, offline]
+    needs: [version, test, linux-distros, build, offline]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

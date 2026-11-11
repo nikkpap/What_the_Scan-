@@ -1,13 +1,13 @@
-## What the Scan?! v1.0.7
+## What the Scan?! v1.0.8 — Windows review
 
-**Linux: works on a fresh installation**
-- **pip:** Debian and Ubuntu often ship Python without pip, which used to stop setup. The app now installs pip by itself (apt or dnf, asking for the administrator password).
-- **Window libraries:** the app installs every system library the window needs (glib, EGL, X11/xcb…). If one package name doesn't exist on your distribution, it installs the rest one by one.
-- **Setup progress:** without tkinter, the app shows the system's own progress window (zenity) instead of working silently.
-- **Tested on fresh systems:** every release is now started on fresh Debian 12, Ubuntu 24.04 and Fedora 41 systems with only Python installed. The app has to set everything up by itself (pip, PyQt6, libraries, NAPS2), or the release is not published.
-- **Updates:** the Linux binary's self-update was tested from v1.0.5 to v1.0.6. It downloads, checks the checksum, replaces itself and starts.
+### English
+- **Windows:** scans are saved in your real *Documents* folder, also when OneDrive moves it.
+- **Windows:** works with user names that contain spaces (for example `C:\Users\Nikos Paridis`).
+- **Windows:** when the app is installed in *Program Files*, the update shows a clear message instead of an error, and the old version is restored if the update can't finish.
+- **Faster, safer releases:** every release is now checked before it is published. The `.pyw` gets a first start on fresh Windows, Ubuntu, Debian and Fedora machines. The Windows `.exe`, the Linux binary and the macOS apps are each started once.
 
-**Ελληνικά**
-- **Linux:** η εφαρμογή εγκαθιστά πλέον μόνη της το pip και τις βιβλιοθήκες γραφικών σε «γυμνό» Linux.
-- **Πρόοδος:** αν λείπει το tkinter, δείχνει την πρόοδο της εγκατάστασης σε παράθυρο του συστήματος.
-- **Έλεγχος:** κάθε έκδοση δοκιμάζεται σε φρέσκα Debian 12, Ubuntu 24.04 και Fedora 41 πριν δημοσιευτεί.
+### Ελληνικά
+- **Windows:** οι σαρώσεις αποθηκεύονται στον πραγματικό φάκελο *Έγγραφα*, ακόμη κι όταν τον έχει μετακινήσει το OneDrive.
+- **Windows:** λειτουργεί και με ονόματα χρήστη που έχουν κενά (π.χ. `C:\Users\Nikos Paridis`).
+- **Windows:** όταν η εφαρμογή είναι εγκατεστημένη στα *Program Files*, η ενημέρωση δείχνει ένα σαφές μήνυμα αντί για σφάλμα. Αν η ενημέρωση δεν ολοκληρωθεί, επανέρχεται η παλιά έκδοση.
+- **Πιο γρήγορα και ασφαλή releases:** κάθε release ελέγχεται πριν δημοσιευτεί. Το `.pyw` ξεκινά για πρώτη φορά σε καθαρά Windows, Ubuntu, Debian και Fedora. Το `.exe` των Windows, το εκτελέσιμο Linux και οι εφαρμογές macOS ξεκινούν από μία φορά.
