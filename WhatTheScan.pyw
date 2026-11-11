@@ -13,6 +13,7 @@ import platform
 import re
 import socket
 import ssl
+import struct
 import time
 import subprocess
 import tempfile
@@ -22,7 +23,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from queue import Empty, Queue
 
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 # Change this one line to rename the app everywhere.
 APP_NAME = "What the Scan?!"
 APP_TAGLINE = "Scanner busy? Now you know who."
@@ -105,11 +106,21 @@ CATALOG = {
     "Canon imageCLASS · 2025": ("MF460 II",),
     "Canon imageFORMULA · 2025": ("DR-C340", "DR-C350"),
     "Canon imageFORMULA · 2026": ("R40II",),
+    "HP Smart Tank": ("520", "525", "580", "585", "720", "750", "790", "5101", "5105", "5106", "6001",
+                      "6005", "6006", "7001", "7005", "7006", "7301", "7305", "7306", "7602", "7605"),
     "HP ScanJet Pro": ("2000 s2", "2600 f1", "3000 s4", "3600 f1", "N4000 snw1", "N4600 fnw1"),
     "HP ScanJet Enterprise Flow": ("5000 s5", "7000 s3", "N6600 fnw1", "N7000 snw1", "9000 s1", "N9120 fn2"),
 }
 # Names the drivers report for a model, when they differ from the model name.
 # Canon drivers call the TS3150 "TS3100 series".
+# Paper sources a model has, when known: glass (flatbed), feeder (ADF), duplex (ADF both sides).
+# Scanners on the network report this themselves (eSCL), which takes priority.
+MODEL_SOURCES = {
+    "HP Smart Tank 750": ("glass", "feeder"),
+    "HP Smart Tank 7001": ("glass",),
+    "HP Smart Tank 7005": ("glass",),
+    "Canon PIXMA TS3150": ("glass",),
+}
 MODEL_ALIASES = {
     "PIXMA TS3150": ("ts3100", "ts3150", "ts3151", "ts3152"),
 }
@@ -174,7 +185,8 @@ OFFLINE INSTALLATION
 DRIVERS
   Epson: Epson Scan 2 (Windows: add the scanner IP in Epson Scan 2 Utility).
   Canon: MP Drivers. Settings › Scanner › Driver setup installs the TS3150 driver.
-  HP: HP Smart / HP Scan drivers.  macOS: Image Capture.  Linux: SANE."""
+  HP (incl. Smart Tank): works over the network with no driver (AirPrint / eSCL),
+      or with the HP Smart / HP Scan driver.  macOS: Image Capture.  Linux: SANE."""
 
 
 def normalize(text):
@@ -196,9 +208,84 @@ def local_broadcasts():
     return targets
 
 
+def _dns_name(data, offset):
+    """Read a (possibly compressed) DNS name. Returns (labels, offset after the name)."""
+    labels, jumped, end, guard = [], False, offset, 0
+    while offset < len(data) and guard < 64:
+        guard += 1
+        length = data[offset]
+        if length == 0:
+            offset += 1
+            break
+        if length & 0xC0 == 0xC0:
+            pointer = ((length & 0x3F) << 8) | data[offset + 1]
+            if not jumped:
+                end = offset + 2
+            jumped, offset = True, pointer
+            continue
+        labels.append(data[offset + 1: offset + 1 + length].decode("utf-8", "replace"))
+        offset += 1 + length
+    return labels, (end if jumped else offset)
+
+
+def discover_mdns(timeout=2.0):
+    """Find network scanners that announce eSCL (AirPrint/Mopria scanning) over mDNS: HP, Canon, Epson,
+    Brother… Returns {ip: device name}."""
+    services = ("_uscan._tcp.local", "_uscans._tcp.local")
+    query = struct.pack("!HHHHHH", 0, 0, len(services), 0, 0, 0)
+    for service in services:
+        query += b"".join(bytes([len(p)]) + p.encode() for p in service.split(".")) + b"\0"
+        query += struct.pack("!HH", 12, 1)  # PTR, IN
+    found = {}
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) as sock:
+        sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
+        try:
+            sock.sendto(query, ("224.0.0.251", 5353))  # legacy unicast query: replies come to this port
+        except OSError:
+            return found
+        deadline = time.monotonic() + timeout
+        while (remaining := deadline - time.monotonic()) > 0:
+            sock.settimeout(remaining)
+            try:
+                data, (ip, _) = sock.recvfrom(9000)
+            except socket.timeout:
+                break
+            except OSError:
+                time.sleep(0.02)
+                continue
+            try:
+                _, flags, qd, an, ns, ar = struct.unpack("!HHHHHH", data[:12])
+                offset = 12
+                for _ in range(qd):
+                    _, offset = _dns_name(data, offset)
+                    offset += 4
+                for _ in range(an + ns + ar):
+                    name, offset = _dns_name(data, offset)
+                    rtype, _, _, length = struct.unpack("!HHIH", data[offset: offset + 10])
+                    offset += 10
+                    if rtype == 12 and ".".join(name[-3:]).lower() in ("_uscan._tcp.local", "_uscans._tcp.local"):
+                        target, _ = _dns_name(data, offset)
+                        if target:
+                            found.setdefault(ip, target[0])
+                    offset += length
+            except (struct.error, IndexError):
+                continue
+    return found
+
+
+def brand_of(name):
+    lowered = name.lower()
+    for brand in ("HP", "Epson", "Canon", "Brother", "Kyocera", "Ricoh", "Xerox", "Samsung", "Lexmark"):
+        if lowered.startswith(brand.lower()) or f" {brand.lower()} " in f" {lowered} ":
+            return brand
+    return "eSCL"
+
+
 def discover_network(timeout=2.0):
-    """Find Epson (ENPC, UDP 3289) and Canon (BJNP, UDP 8612) devices on the local network.
-    Returns a sorted list of (ip, mac, reachable, brand)."""
+    """Find scanners on the local network: Epson (ENPC, UDP 3289), Canon (BJNP, UDP 8612) and every
+    eSCL scanner (mDNS, e.g. HP Smart Tank). Returns a sorted list of (ip, mac, reachable, brand, name)."""
+    mdns_pool = ThreadPoolExecutor(max_workers=1)
+    mdns = mdns_pool.submit(discover_mdns, timeout)
     epson_request = bytes.fromhex("4550534f4e5000ff00000000000000")
     # BJNP header: "BJNP", device type 2 (scanner), command 1 (discover), seq 1, no payload.
     canon_request = b"BJNP" + bytes([2, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0])
@@ -239,10 +326,19 @@ def discover_network(timeout=2.0):
             old = replies.get(ip)
             replies[ip] = (mac or (old[0] if old else ""), brand)
 
+    try:
+        escl_names = mdns.result(timeout + 3)
+    except Exception:
+        escl_names = {}
+    mdns_pool.shutdown(wait=False)
+    for ip, name in escl_names.items():
+        if ip not in replies:
+            replies[ip] = ("", brand_of(name))
+
     def reachable(item):
         ip, (_, brand) = item
-        if brand == "Canon":
-            return True  # it just answered on the scanner protocol
+        if brand != "Epson":
+            return True  # it just answered on its scanner protocol
         try:
             with socket.create_connection((ip, 1865), timeout=1):
                 return True
@@ -254,7 +350,7 @@ def discover_network(timeout=2.0):
         return []
     with ThreadPoolExecutor(max_workers=min(16, len(items))) as pool:
         states = list(pool.map(reachable, items))
-    return [(ip, mac, state, brand) for (ip, (mac, brand)), state in zip(items, states)]
+    return [(ip, mac, state, brand, escl_names.get(ip, "")) for (ip, (mac, brand)), state in zip(items, states)]
 
 
 ESCL_STATE = re.compile(r"<(?:\w+:)?State>\s*(\w+)\s*</(?:\w+:)?State>")
@@ -276,6 +372,27 @@ def escl_status(ip):
                     return match.group(1).capitalize()
         except (OSError, ValueError):
             continue
+    return None
+
+
+def escl_capabilities(ip):
+    """Paper sources the scanner reports over eSCL: a set of glass / feeder / duplex, or None."""
+    for scheme, opener in (("http", _NO_PROXY), ("https", _LAN_TLS_OPENER)):
+        try:
+            with opener.open(f"{scheme}://{ip}/eSCL/ScannerCapabilities", timeout=3) as response:
+                text = response.read(400000).decode("utf-8", "replace")
+        except (OSError, ValueError):
+            continue
+        if "ScannerCapabilities" not in text:
+            continue
+        sources = set()
+        if re.search(r"<(?:\w+:)?Platen\b", text):
+            sources.add("glass")
+        if re.search(r"<(?:\w+:)?Adf\b", text):
+            sources.add("feeder")
+            if re.search(r"<(?:\w+:)?AdfDuplexInputCaps\b", text):
+                sources.add("duplex")
+        return sources or None
     return None
 
 
@@ -1035,7 +1152,8 @@ GUIDE_GR = """ΠΩΣ ΣΑΡΩΝΩ (3 βήματα)
 DRIVERS
   Epson: Epson Scan 2 (Windows: πρόσθεσε την IP στο Epson Scan 2 Utility).
   Canon: MP Drivers. Ρυθμίσεις › Σαρωτής › Εγκατάσταση driver για το TS3150.
-  HP: HP Smart / HP Scan.  macOS: Image Capture.  Linux: SANE."""
+  HP (και Smart Tank): δουλεύει μέσω δικτύου χωρίς driver (AirPrint / eSCL)
+      ή με τον driver HP Smart / HP Scan.  macOS: Image Capture.  Linux: SANE."""
 
 UPDATE_HOSTS = ("github.com", "api.github.com", "objects.githubusercontent.com",
                 "release-assets.githubusercontent.com", "github-releases.githubusercontent.com")
@@ -1606,7 +1724,7 @@ GR = {
     "Auto (all drivers)": "Αυτόματα (όλοι οι drivers)", "No scanner found yet": "Δεν βρέθηκε ακόμη σαρωτής",
     "Refresh": "Ανανέωση", "Driver setup": "Εγκατάσταση driver", "Find on network": "Εύρεση στο δίκτυο",
     "Web panel": "Σελίδα σαρωτή", "Find your model’s driver": "Βρες τον driver του μοντέλου σου",
-    "No Epson or Canon network reply yet": "Καμία απάντηση Epson ή Canon στο δίκτυο ακόμη",
+    "No network reply yet": "Καμία απάντηση από το δίκτυο ακόμη",
     "Everything here is found automatically. Change it only if the wrong scanner is chosen.":
         "Όλα εδώ βρίσκονται αυτόματα. Άλλαξέ τα μόνο αν επιλέχθηκε λάθος σαρωτής.",
     "Save as": "Αποθήκευση ως", "one PDF with every page": "ένα PDF με όλες τις σελίδες",
@@ -1726,10 +1844,13 @@ GR = {
     "{label} installed. Looking for scanners…": "Εγκαταστάθηκε το {label}. Αναζήτηση σαρωτών…",
     "Driver setup failed. {error}\nThe support page is opening so you can install it by hand.":
         "Η εγκατάσταση του driver απέτυχε. {error}\nΑνοίγει η σελίδα υποστήριξης για χειροκίνητη εγκατάσταση.",
-    "Searching the local network for Epson and Canon devices…": "Αναζήτηση συσκευών Epson και Canon στο τοπικό δίκτυο…",
+    "Searching the local network for scanners (Epson, Canon, HP, AirPrint)…":
+        "Αναζήτηση σαρωτών στο τοπικό δίκτυο (Epson, Canon, HP, AirPrint)…",
+    "answered as a network (eSCL) scanner ✓": "απάντησε ως σαρωτής δικτύου (eSCL) ✓",
+    "This scanner has: {sources}": "Αυτός ο σαρωτής έχει: {sources}",
     "Network discovery failed. {error}": "Η αναζήτηση στο δίκτυο απέτυχε. {error}",
     "Select your scanner's network address.": "Διάλεξε τη διεύθυνση δικτύου του σαρωτή σου.",
-    "No Epson or Canon device replied on this local network.": "Καμία συσκευή Epson ή Canon δεν απάντησε σε αυτό το δίκτυο.",
+    "No scanner replied on this local network.": "Κανένας σαρωτής δεν απάντησε σε αυτό το δίκτυο.",
     "answered as a Canon scanner ✓": "απάντησε ως σαρωτής Canon ✓",
     "responds on the scanner port ✓": "απαντά στη θύρα σαρωτή ✓",
     "did not respond on the scanner port": "δεν απάντησε στη θύρα σαρωτή",
@@ -2047,6 +2168,8 @@ class Scanner(QWidget):
         threading.Thread(target=self.poll_escl, daemon=True).start()
 
         self.catalog_keys = []
+        self.network_caps = {}
+        self.allowed_sources = None
         self.update_info = None
         self.text_dialog = None
         self.icon_widgets = []
@@ -2490,6 +2613,8 @@ class Scanner(QWidget):
         self.nav = QListWidget()
         self.nav.setObjectName("nav")
         self.nav.setIconSize(QSize(20, 20))
+        self.nav.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.nav.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         side.addWidget(self.nav, 1)
         done = QPushButton(tr("Done"))
         done.setObjectName("primary")
@@ -2528,7 +2653,10 @@ class Scanner(QWidget):
             brand, _, detail = group.partition(" · ")
             for model in models:
                 self.model.addItem(f"{brand} {model}" + (f"  ·  {detail}" if detail else ""), (brand, model))
-                for key in (normalize(model), *MODEL_ALIASES.get(model, ())):
+                series = normalize(" ".join(brand.split()[1:]))
+                plain = normalize(model)
+                keys = [series + plain] if plain.isdigit() else [plain]
+                for key in (*keys, *MODEL_ALIASES.get(model, ())):
                     self.catalog_keys.append((self.model.count() - 1, normalize(brand.split()[0]), key))
         self.catalog_keys.sort(key=lambda item: -len(item[2]))
         support = QPushButton(tr("Driver setup"))
@@ -2537,7 +2665,7 @@ class Scanner(QWidget):
         form.addRow(tr("Model"), self.row(self.model, support))
         form = self.section(box, tr("Network"))
         self.network = QComboBox()
-        self.network.setPlaceholderText(tr("No Epson or Canon network reply yet"))
+        self.network.setPlaceholderText(tr("No network reply yet"))
         form.addRow(tr("Network"), self.network)
         self.find_network = QPushButton(tr("Find on network"))
         self.iconize(self.find_network, "refresh")
@@ -2900,6 +3028,7 @@ class Scanner(QWidget):
     # ---------- catalog / drivers / network ----------
     def device_changed(self):
         self.select_catalog_model()
+        self.apply_sources()
         self.update_connection()
         self.update_controls()
         self.update_led()
@@ -2989,7 +3118,7 @@ class Scanner(QWidget):
         if not self.find_network.isEnabled():
             return
         self.find_network.setEnabled(False)
-        self.network_status.setText(tr("Searching the local network for Epson and Canon devices…"))
+        self.network_status.setText(tr("Searching the local network for scanners (Epson, Canon, HP, AirPrint)…"))
 
         def done(ok, devices):
             self.find_network.setEnabled(True)
@@ -2997,13 +3126,14 @@ class Scanner(QWidget):
                 self.network_status.setText(tr("Network discovery failed. {error}", error=devices))
                 return
             preferred = self.settings.value("network_mac", "")
+            preferred_ip = self.settings.value("network_ip", "")
             self.network.blockSignals(True)
             self.network.clear()
             selection = -1
-            for index, (ip, mac, reachable, brand) in enumerate(devices):
-                self.network.addItem(f"{brand}  ·  {ip}" + (f"  ·  {mac}" if mac else ""),
-                                     (ip, mac, reachable, brand))
-                if mac and mac == preferred:
+            for index, (ip, mac, reachable, brand, name) in enumerate(devices):
+                label = f"{name}  ·  {ip}" if name else f"{brand}  ·  {ip}"
+                self.network.addItem(label + (f"  ·  {mac}" if mac else ""), (ip, mac, reachable, brand, name))
+                if (mac and mac == preferred) or (selection < 0 and ip == preferred_ip):
                     selection = index
             self.network.setCurrentIndex(0 if len(devices) == 1 else selection)
             self.network.blockSignals(False)
@@ -3012,7 +3142,7 @@ class Scanner(QWidget):
             else:
                 self.escl_ip = None
                 self.network_status.setText(tr("Select your scanner's network address.") if devices else
-                                            tr("No Epson or Canon device replied on this local network."))
+                                            tr("No scanner replied on this local network."))
             self.update_connection()
             self.update_controls()
 
@@ -3023,17 +3153,65 @@ class Scanner(QWidget):
         if not device:
             self.escl_ip = None
             return
-        ip, mac, reachable, brand = device
+        ip, mac, reachable, brand, name = device
         if mac:
             self.settings.setValue("network_mac", mac)
+        self.settings.setValue("network_ip", ip)
         self.escl_ip = ip
+        if ip not in self.network_caps:
+            self.network_caps[ip] = None
+            self.background(lambda: escl_capabilities(ip), lambda ok, caps: self.caps_ready(ip, caps if ok else None))
         if brand == "Canon":
             state = tr("answered as a Canon scanner ✓")
+        elif brand != "Epson":
+            state = tr("answered as a network (eSCL) scanner ✓")
         else:
             state = tr("responds on the scanner port ✓") if reachable else tr("did not respond on the scanner port")
         self.network_status.setText(tr("{brand} {ip} {state}. Scanning uses the driver chosen above.",
                                        brand=brand, ip=ip, state=state))
         self.update_connection()
+        self.update_controls()
+
+    def caps_ready(self, ip, caps):
+        self.network_caps[ip] = caps
+        self.apply_sources()
+
+    def scanner_sources(self):
+        """The paper sources the selected scanner has (set of glass/feeder/duplex), or None if unknown."""
+        device = self.device.currentData()
+        network = self.network.currentData()
+        if device and network:
+            caps = self.network_caps.get(network[0])
+            name = normalize(device[0])
+            same = device[1] == "escl" or normalize(network[3]) in name or (
+                network[4] and normalize(network[4])[:12] in name)
+            if caps and same:
+                return set(caps)
+        entry = self.model.currentData()
+        if device and entry:
+            known = MODEL_SOURCES.get(f"{entry[0]} {entry[1]}")
+            if known:
+                return set(known)
+        return None
+
+    def apply_sources(self):
+        """Grey out paper sources the scanner doesn't have; move off an unavailable choice."""
+        allowed = self.scanner_sources()
+        self.allowed_sources = allowed
+        model = self.source.model()
+        for row in range(self.source.count()):
+            value = self.source.itemData(row)
+            item = model.item(row)
+            if item is not None:
+                item.setEnabled(value == "auto" or allowed is None or value in allowed)
+        if allowed is not None and self.source.currentData() not in allowed | {"auto"}:
+            self.source.setCurrentIndex(max(0, self.source.findData("auto")))
+        if allowed:
+            names = {"glass": tr("Flatbed"), "feeder": tr("Feeder"), "duplex": tr("Feeder · 2 sides")}
+            self.source.setToolTip(tr("This scanner has: {sources}",
+                                      sources=", ".join(names[k] for k in ("glass", "feeder", "duplex") if k in allowed)))
+        else:
+            self.source.setToolTip("")
         self.update_controls()
 
     def open_web_panel(self):
@@ -3051,7 +3229,8 @@ class Scanner(QWidget):
             widget.setEnabled(not busy)
         ready = not busy and self.device.currentData() is not None
         self.scan_button.setEnabled(ready)
-        self.preview.setEnabled(ready and self.source.currentData() in ("glass", "auto"))
+        has_glass = self.allowed_sources is None or "glass" in self.allowed_sources
+        self.preview.setEnabled(ready and has_glass and self.source.currentData() in ("glass", "auto"))
         self.progress.setVisible(busy)
         self.cancel.setVisible(scanning or searching)
         self.cancel.setText(tr("Stop search") if searching and not scanning else tr("Cancel"))
@@ -3293,6 +3472,11 @@ class Scanner(QWidget):
             base = folder / stamp
             replace = False
         source = source or self.source.currentData()
+        allowed = self.allowed_sources
+        if source == "auto" and allowed and "feeder" not in allowed:
+            source = "glass"  # no document feeder: go straight to the flatbed
+        elif source == "auto" and allowed == {"feeder"}:
+            source = "feeder"
         # Word always needs the text, so it turns OCR on for that scan.
         doc = self.doc_format()
         ocr = self.ocr_languages() if self.ocr_on.isChecked() or doc else []
