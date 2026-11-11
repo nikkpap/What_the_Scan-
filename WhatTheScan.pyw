@@ -823,11 +823,59 @@ def windows_python(report):
     return candidate
 
 
+LINUX_QT_LIBS = {  # system libraries PyQt6 (Qt 6) needs on Linux
+    "apt-get": ["libegl1", "libgl1", "libxkbcommon-x11-0", "libxcb-cursor0", "libxcb-icccm4",
+                "libxcb-keysyms1", "libxcb-shape0", "libdbus-1-3", "libfontconfig1"],
+    "dnf": ["mesa-libEGL", "mesa-libGL", "libxkbcommon-x11", "xcb-util-cursor", "xcb-util-wm",
+            "xcb-util-keysyms", "dbus-libs", "fontconfig"],
+}
+
+
+def missing_library(text):
+    match = re.search(r"([\w.+-]+\.so[\w.]*): cannot open shared object file", text or "")
+    return match.group(1) if match else ""
+
+
+def install_linux_qt_libs(report, library):
+    """Install the system libraries Qt needs (asks for the administrator password)."""
+    manager = shutil.which("apt-get") or shutil.which("dnf")
+    if not manager:
+        return False
+    packages = LINUX_QT_LIBS[Path(manager).name]
+    report(f"Installing system libraries for the window ({library})…")
+    command = [manager, "-y", "install", *packages]
+    if os.geteuid() != 0:
+        pkexec = shutil.which("pkexec")
+        if not pkexec:
+            return False
+        command.insert(0, pkexec)
+    try:
+        return run_hidden(command, stdin=subprocess.DEVNULL, capture_output=True, timeout=900).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def linux_qt_hint(library):
+    manager = "apt-get" if shutil.which("apt-get") or not shutil.which("dnf") else "dnf"
+    tool = "apt" if manager == "apt-get" else "dnf"
+    return (f"The window library PyQt6 needs a system file that is missing ({library}). "
+            f"Install it with:  sudo {tool} install {' '.join(LINUX_QT_LIBS[manager])}")
+
+
 def bootstrap(report):
     if not (WINDOWS or MAC or LINUX):
         raise RuntimeError("This app supports Windows, macOS and Linux.")
     if FROZEN:
         # The .exe / Linux binary already contains Python, PyQt6, PyMuPDF and python-docx.
+        if LINUX:
+            try:
+                import PyQt6.QtWidgets  # noqa: F401  (needs a few system libraries)
+            except ImportError as exc:
+                library = missing_library(str(exc))
+                if not library:
+                    raise
+                if not install_linux_qt_libs(report, library):
+                    raise RuntimeError(linux_qt_hint(library))
         report("Checking NAPS2…")
         if not find_backend():
             install_naps(report)
@@ -856,7 +904,16 @@ def bootstrap(report):
         if str(QT_CACHE) not in sys.path:
             sys.path.insert(0, str(QT_CACHE))
         env["PYTHONPATH"] = os.pathsep.join(sys.path)
-        run_hidden(probe, env=env, check=True, timeout=30)
+        result = run_hidden(probe, env=env, capture_output=True, text=True, timeout=30)
+        library = missing_library(result.stderr) if result.returncode and LINUX else ""
+        if library:
+            if install_linux_qt_libs(report, library):
+                result = run_hidden(probe, env=env, capture_output=True, text=True, timeout=30)
+            if result.returncode:
+                raise RuntimeError(linux_qt_hint(missing_library(result.stderr) or library))
+        if result.returncode:
+            last = (result.stderr or "").strip().splitlines()[-1:]
+            raise RuntimeError("PyQt6, PyMuPDF or python-docx could not be loaded. " + (last[0] if last else ""))
     report("Checking NAPS2…")
     if not find_backend():
         install_naps(report)

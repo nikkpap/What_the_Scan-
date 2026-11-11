@@ -2,7 +2,11 @@
 
 **Fix:** on a PC without NAPS2, v1.0.4 stopped at setup with "name 'app_path' is not defined". Fixed. Every release is now checked on GitHub with a real first start before it is published.
 
+**Linux:** if the system libraries PyQt6 needs for its window are missing (for example libEGL), the app now installs them itself (apt or dnf, asking for the administrator password), or shows the exact install command.
+
 **Διόρθωση:** σε PC χωρίς NAPS2 η v1.0.4 σταματούσε στην εγκατάσταση με το μήνυμα «name 'app_path' is not defined». Διορθώθηκε, και κάθε έκδοση ελέγχεται πλέον στο GitHub με πραγματική πρώτη εκκίνηση πριν δημοσιευτεί.
+
+**Linux:** αν λείπουν βιβλιοθήκες συστήματος που χρειάζεται το PyQt6 για το παράθυρο (π.χ. libEGL), η εφαρμογή τις εγκαθιστά μόνη της (apt ή dnf, ζητώντας κωδικό διαχειριστή) ή δείχνει την ακριβή εντολή εγκατάστασης.
 
 ### From v1.0.4
 
