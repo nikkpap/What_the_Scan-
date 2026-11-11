@@ -22,7 +22,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from queue import Empty, Queue
 
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 # Change this one line to rename the app everywhere.
 APP_NAME = "What the Scan?!"
 APP_TAGLINE = "Scanner busy? Now you know who."
@@ -58,6 +58,39 @@ REPO = "nikkpap/What_the_Scan-"
 REPO_URL = f"https://github.com/{REPO}"
 AUTHOR_URL = "https://github.com/nikkpap"
 NAPS_URL = "https://github.com/cyanfish/naps2/releases/download/v8.6.0/naps2-8.6.0-win-x64.exe"
+NAPS_HASHES = {
+    "mac-univ.pkg": "8bd5635cae69336f781c418aabc012fddd7348c787bc3ff9940f11ce9bead538",
+    "linux-arm64.deb": "5eeaf2a664c6749bb623ef42d0897dfe6a91eeb9260ce6db2ca8aeed29c96bd9",
+    "linux-arm64.rpm": "6b7c37c2192c5a7fa26548391c1ebd121dd261797ead5f7063ba0b60282b78fb",
+    "linux-x64.deb": "bc618ce0da3817409757e828b23c03992530951a769d1debe7291e48db9b3626",
+    "linux-x64.rpm": "0ab6c7c012017ea4aba35f8eb4a4913a06bd4808f5f158191ffa3969fc3cc272",
+}
+PYTHON_WIN_URL = "https://www.python.org/ftp/python/3.14.10/python-3.14.10-{arch}.exe"
+PIP_PACKAGES = ("PyQt6>=6.6,<7", "PyMuPDF>=1.24,<2", "python-docx>=1.1")
+# NAPS2's own OCR language packs (tesseract 4 data) and their published SHA-256 checksums.
+OCR_URL = "https://github.com/cyanfish/naps2-components/releases/download/tesseract-4.0.0b4/{code}.traineddata.zip"
+OCR_SHA256 = {
+    "ara": "24d2a74937150e6d41a69f2758aea3817d7f80ed53f780adaa492a83e249b62f",
+    "bul": "75efd60898e3f6e254f3a9059d53548b92140ff14c603cbc3d46061d7a2d257d",
+    "chi_sim": "21ebe92da47078c237b776d5ef79b3668b6a5b76f1ec527588e60d57230f097d",
+    "deu": "134f41cb8a47e139cf988ea255f03a5b278d50eabad438204f708abf5a6442ce",
+    "ell": "9dede46367708f74917386b88a08e7ca41829aa4278a0b187af594fc6a584ae8",
+    "eng": "9d167994617c5fd827bf6b31f298e69cd05e6d30b9965715e78191df5606389e",
+    "fra": "00b779d1373d837f927d34f1e66d9b99d0339ce5dba82d80b928c5eba431ad8a",
+    "ita": "53136c0def889f2acad686e96e6f40b7a7d53e5537dfbbf956ba351892bbf8e6",
+    "nld": "572f6fc496f7998f10e1a229ca103c0f6bb685d837648c04315efc98b98524c3",
+    "pol": "c7a892bcb49f237159662865fa18703ccc03f0dd8d1573fd8ffc9057d664e962",
+    "por": "0f8913e7e691237e0ff946ba993ed32a1c1eafcf7957263dc4a54f1b2a99411d",
+    "ron": "79d51616c67ad813608b3a82dd10cfc1ee874463d5dce11cc61c12de3f48a58c",
+    "rus": "0dd9b6ab808045a706ad312283b1841b1ba0c5e196287e7a773f66e1e629b5e6",
+    "spa": "820a0ec5e083188b366ac3e5d79f02fa1bb51c274c3e01ce6943826bacc38981",
+    "sqi": "063dc592eed9c5adc41b006b2b52fe84f0103f144499b1a6d4423bd301c375df",
+    "srp": "13c63b4992906d5c016924ece6ab29d8b27cc1bf7111dd7243ccb680e799fac2",
+    "tur": "7141de10ca977abdab21080afe5dc2025d6cec1661fba5803099bacc25033091",
+    "ukr": "c14a794e98c24976c84f41f05217fba1155953f3a6062b9f63d6122e0936f6f7",
+}
+# Put this zip (or its unzipped folder) next to the app to install everything without internet.
+OFFLINE_NAME = "WhatTheScan-offline"
 CATALOG = {
     "Epson · 2024": ("DS-800WN", "DS-900WN"),
     "Epson · 2025": ("DS-1730", "DS-1760WN", "DS-530 II TAA", "DS-730N TAA", "DS-870 TAA"),
@@ -130,6 +163,11 @@ STATUS LIGHT
 SHORTCUTS
   Ctrl+S  scan    Ctrl+P  preview    Ctrl+T  text & translation
   F5  search again    Ctrl+,  settings    F1  this guide    Esc  cancel
+
+OFFLINE INSTALLATION
+  Put WhatTheScan-offline.zip (from the GitHub release) next to the app.
+  NAPS2, Python packages, drivers and OCR languages are then installed from it,
+  with no internet. Without the zip everything is downloaded as usual.
 
 DRIVERS
   Epson: Epson Scan 2 (Windows: add the scanner IP in Epson Scan 2 Utility).
@@ -398,7 +436,112 @@ def run_hidden(args, **kwargs):
     return subprocess.run(args, creationflags=HIDDEN, **kwargs)
 
 
+# ---------------------------------------------------------------- offline package
+def offline_bundle():
+    """The offline package next to the app: WhatTheScan-offline.zip or its unzipped folder, else None."""
+    here = Path(sys.executable if FROZEN else __file__).resolve().parent
+    for candidate in (here / f"{OFFLINE_NAME}.zip", here / OFFLINE_NAME):
+        if candidate.is_file() or candidate.is_dir():
+            return candidate
+    return None
+
+
+def offline_names():
+    """{lower-case file name: member path} of every file in the offline package."""
+    bundle = offline_bundle()
+    if bundle is None:
+        return {}
+    if bundle.is_dir():
+        return {p.name.lower(): str(p) for p in bundle.rglob("*") if p.is_file()}
+    import zipfile
+    try:
+        with zipfile.ZipFile(bundle) as archive:
+            return {Path(n).name.lower(): n for n in archive.namelist() if not n.endswith("/")}
+    except (OSError, zipfile.BadZipFile):
+        return {}
+
+
+def offline_extract(name, target):
+    """Copy the file called `name` from the offline package to `target`. True if it was there."""
+    bundle = offline_bundle()
+    member = offline_names().get(name.lower()) if bundle else None
+    if not member:
+        return False
+    try:
+        if bundle.is_dir():
+            shutil.copyfile(member, target)
+        else:
+            import zipfile
+            with zipfile.ZipFile(bundle) as archive, archive.open(member) as source, open(target, "wb") as out:
+                shutil.copyfileobj(source, out, 1024 * 1024)
+        return True
+    except (OSError, KeyError):
+        Path(target).unlink(missing_ok=True)
+        return False
+
+
+def naps2_ocr_folders(backend):
+    """Where NAPS2 keeps OCR languages: <NAPS2 data>/components/tesseract4/{best,fast}/<code>.traineddata."""
+    if WINDOWS:
+        roots = [Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming")) / "NAPS2"]
+    else:
+        roots = [Path.home() / ".config" / "naps2"]
+        if backend and "flatpak" in Path(backend[0]).name:
+            roots.insert(0, Path.home() / ".var" / "app" / "com.naps2.Naps2" / "config" / "naps2")
+    folders = []
+    for root in roots:
+        components = root / "components"
+        legacy = components / "tesseract-4.0.0b4"
+        current = components / "tesseract4"
+        folders.append(legacy if legacy.is_dir() and not current.is_dir() else current)
+    return folders
+
+
+def install_ocr_offline(code, backend):
+    """Install one OCR language from the offline package. True when done."""
+    name = f"{code}.traineddata.zip"
+    if name.lower() not in offline_names() or code not in OCR_SHA256:
+        return False
+    import zipfile
+    with tempfile.TemporaryDirectory(prefix="WhatTheScan-ocr-") as folder:
+        package = Path(folder) / name
+        if not offline_extract(name, package) or sha256_file(package) != OCR_SHA256[code]:
+            return False
+        with zipfile.ZipFile(package) as archive:
+            members = [m for m in archive.namelist()
+                       if m in (f"best/{code}.traineddata", f"fast/{code}.traineddata")]
+            if not members:
+                return False
+            for root in naps2_ocr_folders(backend):
+                for member in members:
+                    target = root / member
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    with archive.open(member) as source, open(target, "wb") as out:
+                        shutil.copyfileobj(source, out, 1024 * 1024)
+    return True
+
+
+def offline_wheels():
+    """Unpack the Python wheels of the offline package into a folder for pip. None if there are none."""
+    bundle = offline_bundle()
+    names = {n: m for n, m in offline_names().items() if n.endswith(".whl")}
+    if not names:
+        return None
+    folder = QT_CACHE.parent / "offline-wheels"
+    folder.mkdir(parents=True, exist_ok=True)
+    for name in names:
+        target = folder / name
+        if not target.is_file():
+            offline_extract(name, target)
+    return folder
+
+
 def download(url, target, report, label):
+    """Fetch url into target, taking the file from the offline package when it is there.
+    Callers verify every file (signature or checksum) the same way in both cases."""
+    if offline_extract(Path(target).name, target):
+        report(f"{label} (offline package)")
+        return
     with urllib.request.urlopen(url, timeout=30) as response, target.open("wb") as out:
         if urllib.parse.urlsplit(response.url).scheme != "https":
             raise ValueError("Download redirected away from HTTPS.")
@@ -452,13 +595,7 @@ def install_vendor(url, signer, flags, report, label, filename=None):
 
 
 def install_native_naps(report):
-    hashes = {
-        "mac-univ.pkg": "8bd5635cae69336f781c418aabc012fddd7348c787bc3ff9940f11ce9bead538",
-        "linux-arm64.deb": "5eeaf2a664c6749bb623ef42d0897dfe6a91eeb9260ce6db2ca8aeed29c96bd9",
-        "linux-arm64.rpm": "6b7c37c2192c5a7fa26548391c1ebd121dd261797ead5f7063ba0b60282b78fb",
-        "linux-x64.deb": "bc618ce0da3817409757e828b23c03992530951a769d1debe7291e48db9b3626",
-        "linux-x64.rpm": "0ab6c7c012017ea4aba35f8eb4a4913a06bd4808f5f158191ffa3969fc3cc272",
-    }
+    hashes = NAPS_HASHES
     manager = None
     if MAC:
         asset = "mac-univ.pkg"
@@ -498,7 +635,7 @@ def install_naps(report):
         asset = NAPS_URL.replace("win-x64", "win-arm64") if platform.machine().lower() == "arm64" else NAPS_URL
         install_vendor(asset, "NAPS2 Software",
                        ["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], report, "NAPS2")
-    elif LINUX and shutil.which("flatpak"):
+    elif LINUX and shutil.which("flatpak") and not any(n.startswith("naps2-") for n in offline_names()):
         result = run_hidden(["flatpak", "install", "--user", "--noninteractive", "-y",
                              "flathub", "com.naps2.Naps2"], timeout=600)
         if result.returncode != 0 or not find_backend():
@@ -538,7 +675,7 @@ def windows_python(report):
             raise RuntimeError(f"{APP_NAME} needs 64-bit Windows for its scanner engine.")
         asset = "arm64" if architecture == "arm64" else "amd64"
         install_vendor(
-            f"https://www.python.org/ftp/python/3.14.10/python-3.14.10-{asset}.exe",
+            PYTHON_WIN_URL.format(arch=asset),
             "Python Software Foundation",
             ["/quiet", "InstallAllUsers=0", "Include_launcher=0", "Include_pip=1",
              "Include_tcltk=1", "Include_test=0", f"TargetDir={target}"],
@@ -568,12 +705,17 @@ def bootstrap(report):
         if run_hidden([sys.executable, "-m", "pip", "--version"],
                       capture_output=True, timeout=30).returncode:
             run_hidden([sys.executable, "-m", "ensurepip"], check=True, timeout=180)
-        report("Installing PyQt6, PyMuPDF and python-docx (one time)…")
-        run_hidden([
-            sys.executable, "-m", "pip", "install", "--disable-pip-version-check",
-            "--no-input", "--only-binary=:all:", "--upgrade", "--target",
-            str(QT_CACHE), "PyQt6>=6.6,<7", "PyMuPDF>=1.24", "python-docx>=1.1",
-        ], check=True, timeout=300)
+        command = [sys.executable, "-m", "pip", "install", "--disable-pip-version-check",
+                   "--no-input", "--only-binary=:all:", "--upgrade", "--target", str(QT_CACHE), *PIP_PACKAGES]
+        wheels = offline_wheels()
+        installed = False
+        if wheels:
+            report("Installing PyQt6, PyMuPDF and python-docx from the offline package…")
+            installed = run_hidden(command[:4] + ["--no-index", "--find-links", str(wheels)] + command[4:],
+                                   capture_output=True, timeout=300).returncode == 0
+        if not installed:
+            report("Installing PyQt6, PyMuPDF and python-docx (one time)…")
+            run_hidden(command, check=True, timeout=300)
         if str(QT_CACHE) not in sys.path:
             sys.path.insert(0, str(QT_CACHE))
         env["PYTHONPATH"] = os.pathsep.join(sys.path)
@@ -882,6 +1024,11 @@ GUIDE_GR = """ΠΩΣ ΣΑΡΩΝΩ (3 βήματα)
 ΣΥΝΤΟΜΕΥΣΕΙΣ
   Ctrl+S σάρωση   Ctrl+P προεπισκόπηση   Ctrl+T κείμενο
   F5 νέα αναζήτηση   Ctrl+, ρυθμίσεις   F1 οδηγός   Esc ακύρωση
+
+ΕΓΚΑΤΑΣΤΑΣΗ ΧΩΡΙΣ INTERNET
+  Βάλε το WhatTheScan-offline.zip (από το release στο GitHub) δίπλα στην εφαρμογή.
+  Το NAPS2, τα πακέτα Python, οι drivers και οι γλώσσες OCR εγκαθίστανται από
+  εκεί, χωρίς internet. Χωρίς το zip όλα κατεβαίνουν όπως πάντα.
 
 DRIVERS
   Epson: Epson Scan 2 (Windows: πρόσθεσε την IP στο Epson Scan 2 Utility).
@@ -3136,6 +3283,11 @@ class Scanner(QWidget):
         def work():
             failed = []
             for code in missing:
+                try:
+                    if install_ocr_offline(code, backend):
+                        continue
+                except (OSError, ValueError):
+                    pass
                 try:
                     result = run_hidden(backend + ["--install", f"ocr-{code}"], capture_output=True, timeout=600)
                     if result.returncode:

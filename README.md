@@ -44,6 +44,20 @@ Download from the [latest release](https://github.com/nikkpap/What_the_Scan-/rel
 The first start installs the [NAPS2](https://www.naps2.com) scanning engine automatically, if it is
 missing. Install your scanner's own driver if it needs one (Settings › Scanner › Driver setup).
 
+### Offline installation
+
+Download **`WhatTheScan-offline.zip`** from the same release and put it in the same folder as the
+app. On first start the app installs everything from it, with no internet:
+
+- NAPS2
+- the Python packages
+- 64-bit Python (Windows)
+- the Epson L14150 and Canon TS3150 drivers
+- OCR for 18 languages
+
+Every file is still checked the same way as a download. Without the zip the app downloads what it
+needs. Βάλε το zip δίπλα στην εφαρμογή και όλα εγκαθίστανται χωρίς internet.
+
 ## Εγκατάσταση (Ελληνικά)
 
 - **Windows:** κατέβασε το `WhatTheScan-windows-x64.exe` από το [τελευταίο release](https://github.com/nikkpap/What_the_Scan-/releases/latest) και άνοιξέ το.

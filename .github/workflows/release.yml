@@ -14,7 +14,7 @@ name: Build and release
 on:
   push:
     branches: [main]
-    paths: ["WhatTheScan.pyw", "RELEASE_NOTES.md", ".github/workflows/release.yml"]
+    paths: ["WhatTheScan.pyw", "RELEASE_NOTES.md", ".github/workflows/release.yml", "tools/build_offline.py"]
     tags: ["v*"]
   workflow_dispatch:
 
@@ -68,7 +68,7 @@ jobs:
       - name: Install build tools
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller "PyQt6>=6.6,<7" "PyMuPDF>=1.24" "python-docx>=1.1"
+          pip install pyinstaller "PyQt6>=6.6,<7" "PyMuPDF>=1.24,<2" "python-docx>=1.1"
 
       - name: Build
         shell: bash
@@ -117,8 +117,32 @@ jobs:
           name: ${{ matrix.name }}
           path: dist/${{ matrix.asset }}*
 
+  offline:
+    needs: version
+    if: needs.version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Build the offline package (all OS)
+        run: |
+          python tools/build_offline.py
+          cd dist
+          sha256sum WhatTheScan-offline.zip > WhatTheScan-offline.zip.sha256
+          ls -la
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WhatTheScan-offline
+          path: dist/WhatTheScan-offline.zip*
+          compression-level: 0
+
   release:
-    needs: [version, build]
+    needs: [version, build, offline]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
