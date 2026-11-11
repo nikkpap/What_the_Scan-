@@ -44,8 +44,36 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"; echo "Building release v$version."
           fi
 
-  build:
+  test:
     needs: version
+    if: needs.version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Setup code only uses names defined before it
+        run: python tools/check_order.py WhatTheScan.pyw
+
+      - name: First start on a clean PC (no NAPS2) reaches the installer without code errors
+        run: |
+          pip install "PyQt6>=6.6,<7" "PyMuPDF>=1.24,<2" "python-docx>=1.1"
+          mkdir -p /tmp/home
+          set +e
+          env -i PATH="$PATH" HOME=/tmp/home QT_QPA_PLATFORM=offscreen timeout 300 \
+            python WhatTheScan.pyw > startup.log 2>&1
+          set -e
+          cat startup.log
+          grep -q "Installing NAPS2" startup.log
+          if grep -E "Traceback|NameError|is not defined|AttributeError|ImportError" startup.log; then
+            echo "::error::The first start hit a code error."; exit 1
+          fi
+
+  build:
+    needs: [version, test]
     if: needs.version.outputs.exists == 'false'
     strategy:
       fail-fast: false
@@ -184,7 +212,7 @@ jobs:
           path: dist/${{ matrix.asset }}*
 
   offline:
-    needs: version
+    needs: [version, test]
     if: needs.version.outputs.exists == 'false'
     runs-on: ubuntu-latest
     steps:

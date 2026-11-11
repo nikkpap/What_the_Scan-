@@ -1,4 +1,10 @@
-## What the Scan?! v1.0.4
+## What the Scan?! v1.0.5
+
+**Fix:** on a PC without NAPS2, v1.0.4 stopped at setup with "name 'app_path' is not defined". Fixed. Every release is now checked on GitHub with a real first start before it is published.
+
+**Διόρθωση:** σε PC χωρίς NAPS2 η v1.0.4 σταματούσε στην εγκατάσταση με το μήνυμα «name 'app_path' is not defined». Διορθώθηκε, και κάθε έκδοση ελέγχεται πλέον στο GitHub με πραγματική πρώτη εκκίνηση πριν δημοσιευτεί.
+
+### From v1.0.4
 
 **New: HP Smart Tank support, including the Smart Tank 750**
 - **Model list:** the 21 HP Smart Tank all-in-ones (520 to 7605), so the right model is picked automatically.

@@ -23,7 +23,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from queue import Empty, Queue
 
-VERSION = "1.0.4"
+VERSION = "1.0.5"
 # Change this one line to rename the app everywhere.
 APP_NAME = "What the Scan?!"
 APP_TAGLINE = "Scanner busy? Now you know who."
@@ -553,6 +553,24 @@ def get_backend(refresh=False):
 
 def run_hidden(args, **kwargs):
     return subprocess.run(args, creationflags=HIDDEN, **kwargs)
+
+
+def app_path():
+    """What an update replaces: the .app bundle (macOS), the .exe / binary, or this .pyw script."""
+    if FROZEN and MAC:
+        return Path(sys.executable).resolve().parents[2]  # …/What the Scan.app/Contents/MacOS/<exe>
+    return Path(sys.executable if FROZEN else __file__).resolve()
+
+
+def clean_old_update():
+    try:
+        old = app_path().with_name(app_path().name + ".old")
+        if old.is_dir():
+            shutil.rmtree(old, ignore_errors=True)
+        else:
+            old.unlink(missing_ok=True)
+    except OSError:
+        pass
 
 
 # ---------------------------------------------------------------- offline package
@@ -1194,24 +1212,6 @@ def latest_release():
         "asset": app,
         "checksum": checksum,
     }
-
-
-def app_path():
-    """What an update replaces: the .app bundle (macOS), the .exe / binary, or this .pyw script."""
-    if FROZEN and MAC:
-        return Path(sys.executable).resolve().parents[2]  # …/What the Scan.app/Contents/MacOS/<exe>
-    return Path(sys.executable if FROZEN else __file__).resolve()
-
-
-def clean_old_update():
-    try:
-        old = app_path().with_name(app_path().name + ".old")
-        if old.is_dir():
-            shutil.rmtree(old, ignore_errors=True)
-        else:
-            old.unlink(missing_ok=True)
-    except OSError:
-        pass
 
 
 def install_mac_bundle(payload):
