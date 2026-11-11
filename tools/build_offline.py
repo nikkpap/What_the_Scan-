@@ -94,7 +94,7 @@ def main():
     print("NAPS2 scanning engine")
     base = c["NAPS_URL"].rsplit("/", 1)[0]
     version = c["NAPS_URL"].rsplit("/", 1)[1].split("-")[1]
-    for asset in ("win-x64.exe", "win-arm64.exe", *c["NAPS_HASHES"]):
+    for asset in dict.fromkeys(("win-x64.exe", "win-arm64.exe", *c["NAPS_HASHES"])):
         name = f"naps2-{version}-{asset}"
         fetch(f"{base}/{name}", WORK / "naps2" / name, c["NAPS_HASHES"].get(asset))
 

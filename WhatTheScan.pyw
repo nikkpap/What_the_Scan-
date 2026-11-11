@@ -79,6 +79,8 @@ NAPS_HASHES = {
     "linux-arm64.rpm": "6b7c37c2192c5a7fa26548391c1ebd121dd261797ead5f7063ba0b60282b78fb",
     "linux-x64.deb": "bc618ce0da3817409757e828b23c03992530951a769d1debe7291e48db9b3626",
     "linux-x64.rpm": "0ab6c7c012017ea4aba35f8eb4a4913a06bd4808f5f158191ffa3969fc3cc272",
+    "win-x64.exe": "684e26d2145bceab5199971b8620dd715cbeb824ecdc080fe122912b1486da22",
+    "win-arm64.exe": "b646a4d85a4d59208f21466a0ced4de29663f852f87462921265c67813f98a5b",
 }
 PYTHON_WIN_URL = "https://www.python.org/ftp/python/3.14.10/python-3.14.10-{arch}.exe"
 PIP_PACKAGES = ("PyQt6>=6.6,<7", "PyMuPDF>=1.24,<2", "python-docx>=1.1", "certifi")
@@ -744,18 +746,23 @@ def sha256_file(path):
     return digest.hexdigest()
 
 
-def install_vendor(url, signer, flags, report, label, filename=None):
+def install_vendor(url, signer, flags, report, label, filename=None, sha256=None):
     with tempfile.TemporaryDirectory(prefix="EpsonScan-") as folder:
         installer = Path(folder) / (filename or Path(urllib.parse.urlsplit(url).path).name)
         download(url, installer, report, f"Downloading {label}…")
         env = dict(os.environ, EPSON_SCAN_PACKAGE=str(installer))
-        signature = run_hidden([
-            "powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
-            "$s=Get-AuthenticodeSignature -LiteralPath $env:EPSON_SCAN_PACKAGE; "
-            "if ($s.Status -ne 'Valid') { exit 1 }; $s.SignerCertificate.Subject",
-        ], env=env, capture_output=True, text=True, timeout=60)
-        if signature.returncode or signer.lower() not in signature.stdout.lower():
-            raise RuntimeError(f"Windows could not verify the publisher of {label}.")
+        # PowerShell 7 (or a terminal started from it) leaves its own PSModulePath behind, and then
+        # Windows PowerShell cannot load Get-AuthenticodeSignature. Let it use its default modules.
+        env.pop("PSModulePath", None)
+        if not (sha256 and sha256_file(installer) == sha256):
+            signature = run_hidden([
+                "powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+                "$s=Get-AuthenticodeSignature -LiteralPath $env:EPSON_SCAN_PACKAGE; "
+                "if ($s.Status -ne 'Valid') { Write-Output $s.Status; exit 1 }; $s.SignerCertificate.Subject",
+            ], env=env, capture_output=True, text=True, timeout=60)
+            if signature.returncode or signer.lower() not in signature.stdout.lower():
+                detail = (signature.stdout or signature.stderr).strip().splitlines()[-1:] or ["no answer"]
+                raise RuntimeError(f"Windows could not verify the publisher of {label} ({detail[0][:120]}).")
         report(f"Installing {label}…")
         try:
             subprocess.run([str(installer), *flags], check=True, timeout=600)
@@ -810,9 +817,11 @@ def install_native_naps(report):
 def install_naps(report):
     report("Installing NAPS2…")
     if WINDOWS:
-        asset = NAPS_URL.replace("win-x64", "win-arm64") if platform.machine().lower() == "arm64" else NAPS_URL
+        arm = platform.machine().lower() == "arm64"
+        asset = NAPS_URL.replace("win-x64", "win-arm64") if arm else NAPS_URL
         install_vendor(asset, "NAPS2 Software",
-                       ["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], report, "NAPS2")
+                       ["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], report, "NAPS2",
+                       sha256=NAPS_HASHES["win-arm64.exe" if arm else "win-x64.exe"])
     elif LINUX and shutil.which("flatpak") and not any(n.startswith("naps2-") for n in offline_names()):
         result = run_hidden(["flatpak", "install", "--user", "--noninteractive", "-y",
                              "flathub", "com.naps2.Naps2"], timeout=600)

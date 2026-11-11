@@ -64,12 +64,15 @@ jobs:
       - name: Setup code only uses names defined before it
         run: python tools/check_order.py WhatTheScan.pyw
 
-      - name: Window libraries (a desktop Linux has them; the bare test machine does not)
+      - name: Window libraries and NAPS2 (the runner has no password prompt; the self-install of
+          these as root is tested in the linux-distros job)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 \
             libxcb-keysyms1 libxcb-shape0 libdbus-1-3 libfontconfig1 > /dev/null
+          curl -sSL -o /tmp/naps2.deb https://github.com/cyanfish/naps2/releases/download/v8.6.0/naps2-8.6.0-linux-x64.deb
+          sudo apt-get install -y -qq /tmp/naps2.deb > /dev/null
 
       - name: First start installs everything and opens the window
         run: python tools/smoke.py python WhatTheScan.pyw
