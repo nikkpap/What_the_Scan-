@@ -39,7 +39,8 @@ Download from the [latest release](https://github.com/nikkpap/What_the_Scan-/rel
 |---|---|---|
 | Windows 10/11 (64-bit) | `WhatTheScan-windows-x64.exe` | Double-click it. If SmartScreen appears: *More info › Run anyway*. |
 | Linux (x64) | `WhatTheScan-linux-x64` | `chmod +x WhatTheScan-linux-x64`, then open it. |
-| macOS, or any OS with Python 3 | `WhatTheScan.pyw` | Double-click it. It installs PyQt6, PyMuPDF and python-docx itself. |
+| macOS Apple Silicon / Intel | `WhatTheScan-macos-arm64.zip` / `WhatTheScan-macos-x64.zip` | Unzip it and drag *What the Scan* to Applications. First start: *System Settings › Privacy & Security › Open Anyway*. |
+| Any OS with Python 3 | `WhatTheScan.pyw` | Double-click it. It installs PyQt6, PyMuPDF and python-docx itself. |
 
 The first start installs the [NAPS2](https://www.naps2.com) scanning engine automatically, if it is
 missing. Install your scanner's own driver if it needs one (Settings › Scanner › Driver setup).
@@ -94,6 +95,20 @@ GitHub signs the .exe automatically when the repository has your code-signing ce
 A self-signed certificate shows your name as the publisher only on PCs that trust it (install its
 .cer in *Trusted Root Certification Authorities* and *Trusted Publishers*). To remove the
 SmartScreen warning on every PC you need a certificate from a public certificate authority.
+
+## Signing and notarizing the Mac app (optional)
+
+With an Apple Developer Program membership, add these repository secrets and every release is
+signed with your Developer ID and notarized, so macOS opens the app with no warning:
+
+- `MACOS_CERT_P12`: your *Developer ID Application* certificate (.p12) as base64 (`base64 -i cert.p12 | pbcopy`)
+- `MACOS_CERT_PASSWORD`: the .p12 password
+- `APPLE_ID`: your Apple ID e-mail
+- `APPLE_TEAM_ID`: your Team ID
+- `APPLE_APP_PASSWORD`: an app-specific password from appleid.apple.com
+
+Without them the Mac app is ad-hoc signed and users confirm it once in
+*System Settings › Privacy & Security*.
 
 ## Credits
 

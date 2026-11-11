@@ -22,7 +22,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from queue import Empty, Queue
 
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 # Change this one line to rename the app everywhere.
 APP_NAME = "What the Scan?!"
 APP_TAGLINE = "Scanner busy? Now you know who."
@@ -35,7 +35,9 @@ HIDDEN = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 FROZEN = bool(getattr(sys, "frozen", False))
 # Release file names: the .exe / Linux binary built by GitHub Actions, or the .pyw script.
 RELEASE_ASSET = ("WhatTheScan-windows-x64.exe" if WINDOWS else
-                 "WhatTheScan-linux-x64" if LINUX else "WhatTheScan.pyw") if FROZEN else "WhatTheScan.pyw"
+                 "WhatTheScan-linux-x64" if LINUX else
+                 f"WhatTheScan-macos-{'arm64' if platform.machine() == 'arm64' else 'x64'}.zip"
+                 ) if FROZEN else "WhatTheScan.pyw"
 DRIVERS = (
     ("twain", "wia", "escl") if WINDOWS else
     ("apple", "escl") if MAC else ("sane", "escl")
@@ -439,7 +441,7 @@ def run_hidden(args, **kwargs):
 # ---------------------------------------------------------------- offline package
 def offline_bundle():
     """The offline package next to the app: WhatTheScan-offline.zip or its unzipped folder, else None."""
-    here = Path(sys.executable if FROZEN else __file__).resolve().parent
+    here = app_path().parent
     for candidate in (here / f"{OFFLINE_NAME}.zip", here / OFFLINE_NAME):
         if candidate.is_file() or candidate.is_dir():
             return candidate
@@ -1077,16 +1079,43 @@ def latest_release():
 
 
 def app_path():
-    """The file to replace on update: the running .exe / binary, or this .pyw script."""
+    """What an update replaces: the .app bundle (macOS), the .exe / binary, or this .pyw script."""
+    if FROZEN and MAC:
+        return Path(sys.executable).resolve().parents[2]  # …/What the Scan.app/Contents/MacOS/<exe>
     return Path(sys.executable if FROZEN else __file__).resolve()
 
 
 def clean_old_update():
     try:
         old = app_path().with_name(app_path().name + ".old")
-        old.unlink(missing_ok=True)
+        if old.is_dir():
+            shutil.rmtree(old, ignore_errors=True)
+        else:
+            old.unlink(missing_ok=True)
     except OSError:
         pass
+
+
+def install_mac_bundle(payload):
+    """Replace the running .app bundle with the one in the downloaded zip (keeps symlinks and permissions)."""
+    target = app_path()
+    with tempfile.TemporaryDirectory(prefix="WhatTheScan-update-") as folder:
+        archive = Path(folder) / "update.zip"
+        archive.write_bytes(payload)
+        unpacked = Path(folder) / "app"
+        subprocess.run(["/usr/bin/ditto", "-x", "-k", str(archive), str(unpacked)], check=True, timeout=300)
+        new = next(unpacked.glob("*.app"), None)
+        if new is None:
+            raise ValueError("The downloaded update has no .app inside. Nothing was changed.")
+        old = target.with_name(target.name + ".old")
+        shutil.rmtree(old, ignore_errors=True)
+        target.rename(old)
+        try:
+            shutil.move(str(new), str(target))
+        except OSError:
+            old.rename(target)
+            raise
+    return target
 
 
 def install_release(info):
@@ -1107,8 +1136,11 @@ def install_release(info):
     if expected and expected.lower() != digest:
         raise ValueError("The downloaded update failed its checksum. Nothing was changed.")
     if FROZEN:
-        if WINDOWS and payload[:2] != b"MZ" or LINUX and payload[:4] != b"\x7fELF":
+        expected_start = b"MZ" if WINDOWS else b"\x7fELF" if LINUX else b"PK"
+        if not payload.startswith(expected_start):
             raise ValueError("The downloaded file is not a program for this system. Nothing was changed.")
+        if MAC:
+            return install_mac_bundle(payload)
     else:
         compile(payload, "update.pyw", "exec")
         if b"APP_NAME" not in payload:
@@ -2794,6 +2826,10 @@ class Scanner(QWidget):
 
     def restart_app(self):
         if self.scanning():
+            return
+        if FROZEN and MAC:
+            subprocess.Popen(["/usr/bin/open", "-n", str(app_path())])
+            self.close()
             return
         command = [str(app_path())] if FROZEN else [sys.executable, str(app_path())]
         subprocess.Popen(command + sys.argv[1:], creationflags=HIDDEN, env=dict(os.environ, **{RESTART_ENV: "1"}))

@@ -1,24 +1,27 @@
-## What the Scan?! v1.0.2
+## What the Scan?! v1.0.3
 
-**New: offline installation**
-- **`WhatTheScan-offline.zip`:** download it from this release and put it next to the app (the .exe, the Linux binary or the .pyw). The app then installs everything from it, with no internet:
-  - the NAPS2 scanning engine (Windows, macOS, Linux)
-  - PyQt6, PyMuPDF and python-docx for Python 3.10–3.14 (Windows, macOS, Linux)
-  - 64-bit Python for Windows
-  - the Epson L14150 and Canon TS3150 drivers
-  - OCR for 18 languages
-- **Same checks:** every file goes through the same signature or checksum check as a download.
-- **Without the zip:** the app downloads what it needs, as before.
-
-**Improvements**
-- Smaller installation: PyMuPDF stays on the 1.x series, which doesn't need the heavy AI layout extras.
+**New: a Mac app**
+- **What you get:** `What the Scan.app` for **Apple Silicon** (`WhatTheScan-macos-arm64.zip`) and **Intel** Macs (`WhatTheScan-macos-x64.zip`).
+- **How to install:**
+  1. Unzip the file.
+  2. Drag the app to Applications.
+- **First start:** macOS shows a warning, because the app is not notarized by Apple yet.
+  1. Open **System Settings › Privacy & Security**.
+  2. Click **Open Anyway** next to *What the Scan*.
+  3. Confirm. You do this only once.
+- **Updates:** the Mac app updates itself from GitHub, like the Windows and Linux versions.
 
 **Downloads**
-- **Windows:** `WhatTheScan-windows-x64.exe` (signed)
-- **Linux:** `WhatTheScan-linux-x64`. Run `chmod +x`, then open it.
-- **macOS / any OS with Python 3:** `WhatTheScan.pyw`
-- **Offline package for all OS:** `WhatTheScan-offline.zip`
+
+| System | File |
+|---|---|
+| Windows | `WhatTheScan-windows-x64.exe` (signed) |
+| macOS Apple Silicon (M1–M4) | `WhatTheScan-macos-arm64.zip` |
+| macOS Intel | `WhatTheScan-macos-x64.zip` |
+| Linux | `WhatTheScan-linux-x64` (run `chmod +x` first) |
+| Any OS with Python 3 | `WhatTheScan.pyw` |
+| Offline installation, all OS | `WhatTheScan-offline.zip` (put it next to the app) |
 
 **Ελληνικά**
-- **Νέο:** το `WhatTheScan-offline.zip`. Βάλ' το δίπλα στην εφαρμογή και όλα εγκαθίστανται χωρίς internet.
-- **Χωρίς το zip:** η εφαρμογή κατεβάζει ό,τι χρειάζεται, όπως πάντα.
+- **Νέο:** εφαρμογή για Mac. Αποσυμπίεσε το zip και σύρε το *What the Scan* στις Εφαρμογές.
+- **Πρώτο άνοιγμα:** πήγαινε στις **Ρυθμίσεις συστήματος › Απόρρητο και ασφάλεια**, πάτα **Άνοιγμα οπωσδήποτε** δίπλα στο *What the Scan* και επιβεβαίωσε. Χρειάζεται μόνο μία φορά.
