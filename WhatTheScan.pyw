@@ -23,7 +23,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from queue import Empty, Queue
 
-VERSION = "1.0.5"
+VERSION = "1.0.6"
 # Change this one line to rename the app everywhere.
 APP_NAME = "What the Scan?!"
 APP_TAGLINE = "Scanner busy? Now you know who."
@@ -69,7 +69,7 @@ NAPS_HASHES = {
     "linux-x64.rpm": "0ab6c7c012017ea4aba35f8eb4a4913a06bd4808f5f158191ffa3969fc3cc272",
 }
 PYTHON_WIN_URL = "https://www.python.org/ftp/python/3.14.10/python-3.14.10-{arch}.exe"
-PIP_PACKAGES = ("PyQt6>=6.6,<7", "PyMuPDF>=1.24,<2", "python-docx>=1.1")
+PIP_PACKAGES = ("PyQt6>=6.6,<7", "PyMuPDF>=1.24,<2", "python-docx>=1.1", "certifi")
 # NAPS2's own OCR language packs (tesseract 4 data) and their published SHA-256 checksums.
 OCR_URL = "https://github.com/cyanfish/naps2-components/releases/download/tesseract-4.0.0b4/{code}.traineddata.zip"
 OCR_SHA256 = {
@@ -555,6 +555,35 @@ def run_hidden(args, **kwargs):
     return subprocess.run(args, creationflags=HIDDEN, **kwargs)
 
 
+_INTERNET_TLS = None
+
+
+def internet_context():
+    """HTTPS settings for GitHub, downloads and translation: the system certificates PLUS certifi's list.
+    Python from python.org on macOS (and some frozen apps) ships with no certificates at all, which made
+    every HTTPS request fail with CERTIFICATE_VERIFY_FAILED."""
+    global _INTERNET_TLS
+    if _INTERNET_TLS is None:
+        context = ssl.create_default_context()
+        bundle = None
+        try:
+            import certifi
+            bundle = certifi.where()
+        except ImportError:
+            try:
+                from pip._vendor import certifi as pip_certifi  # pip always carries a copy
+                bundle = pip_certifi.where()
+            except ImportError:
+                pass
+        if bundle and os.path.isfile(bundle):
+            try:
+                context.load_verify_locations(cafile=bundle)
+            except (OSError, ssl.SSLError):
+                pass
+        _INTERNET_TLS = context
+    return _INTERNET_TLS
+
+
 def app_path():
     """What an update replaces: the .app bundle (macOS), the .exe / binary, or this .pyw script."""
     if FROZEN and MAC:
@@ -679,7 +708,7 @@ def download(url, target, report, label):
     if offline_extract(Path(target).name, target):
         report(f"{label} (offline package)")
         return
-    with urllib.request.urlopen(url, timeout=30) as response, target.open("wb") as out:
+    with urllib.request.urlopen(url, timeout=30, context=internet_context()) as response, target.open("wb") as out:
         if urllib.parse.urlsplit(response.url).scheme != "https":
             raise ValueError("Download redirected away from HTTPS.")
         total = int(response.headers.get("Content-Length", "0") or 0)
@@ -1244,7 +1273,7 @@ def _github_get(url, limit, accept="application/vnd.github+json"):
     if parsed.scheme != "https" or parsed.hostname not in UPDATE_HOSTS:
         raise ValueError("Updates must come from GitHub over HTTPS.")
     request = urllib.request.Request(url, headers={"Accept": accept, "User-Agent": f"WhatTheScan/{VERSION}"})
-    with urllib.request.urlopen(request, timeout=20) as response:
+    with urllib.request.urlopen(request, timeout=20, context=internet_context()) as response:
         final = urllib.parse.urlsplit(response.url)
         if final.scheme != "https" or final.hostname not in UPDATE_HOSTS:
             raise ValueError("The update download was redirected away from GitHub.")
@@ -1271,9 +1300,18 @@ def latest_release():
     }
 
 
+UPDATE_TRANSLOCATED = ("macOS is running the app from a temporary read-only copy. Drag What the Scan into "
+                       "Applications, open it from there, then update again.")
+UPDATE_NO_PERMISSION = "The app's folder can't be written to. Move the app to a folder you own (or Applications) and update again."
+
+
 def install_mac_bundle(payload):
     """Replace the running .app bundle with the one in the downloaded zip (keeps symlinks and permissions)."""
     target = app_path()
+    if "/AppTranslocation/" in str(target):
+        raise ValueError(UPDATE_TRANSLOCATED)
+    if not os.access(target.parent, os.W_OK):
+        raise ValueError(UPDATE_NO_PERMISSION)
     with tempfile.TemporaryDirectory(prefix="WhatTheScan-update-") as folder:
         archive = Path(folder) / "update.zip"
         archive.write_bytes(payload)
@@ -1321,6 +1359,8 @@ def install_release(info):
         if b"APP_NAME" not in payload:
             raise ValueError("The downloaded file is not this app. Nothing was changed.")
     target = app_path()
+    if not os.access(target.parent, os.W_OK):
+        raise ValueError(UPDATE_NO_PERMISSION)
     with tempfile.NamedTemporaryFile(dir=target.parent, delete=False) as staging:
         staged = Path(staging.name)
         staging.write(payload)
@@ -1890,7 +1930,13 @@ GR = {
     "Update {version} is waiting in Help.": "Η ενημέρωση {version} περιμένει στη Βοήθεια.",
     "Finish the scan first, then install the update from Help.": "Τελείωσε πρώτα τη σάρωση και μετά εγκατάστησε την ενημέρωση από τη Βοήθεια.",
     "Downloading {version} from GitHub…": "Λήψη {version} από το GitHub…",
-    "Update failed. {error}": "Η ενημέρωση απέτυχε. {error}", "Update failed": "Η ενημέρωση απέτυχε",
+    "Update failed. {error}": "Η ενημέρωση απέτυχε. {error}",
+    "macOS is running the app from a temporary read-only copy. Drag What the Scan into Applications, open it from there, then update again.":
+        "Το macOS τρέχει την εφαρμογή από προσωρινό αντίγραφο μόνο για ανάγνωση. Σύρε το What the Scan στις "
+        "Εφαρμογές, άνοιξέ το από εκεί και κάνε ξανά ενημέρωση.",
+    "The app's folder can't be written to. Move the app to a folder you own (or Applications) and update again.":
+        "Ο φάκελος της εφαρμογής δεν επιτρέπει αλλαγές. Μετάφερε την εφαρμογή σε δικό σου φάκελο (ή στις "
+        "Εφαρμογές) και κάνε ξανά ενημέρωση.", "Update failed": "Η ενημέρωση απέτυχε",
     "{error}\n\nOpen the release page to download it by hand?": "{error}\n\nΆνοιγμα της σελίδας για χειροκίνητη λήψη;",
     "Updated to {version}. Restarting…": "Ενημερώθηκε σε {version}. Επανεκκίνηση…",
     "Choose a model to find its driver.": "Διάλεξε μοντέλο για να βρεθεί ο driver του.",
@@ -1998,7 +2044,7 @@ def _chunks(text, limit):
 
 def _web(url, data=None, headers=None, timeout=25):
     request = urllib.request.Request(url, data=data, headers={"User-Agent": "Mozilla/5.0 WhatTheScan", **(headers or {})})
-    with urllib.request.urlopen(request, timeout=timeout) as response:
+    with urllib.request.urlopen(request, timeout=timeout, context=internet_context()) as response:
         return response.read(4_000_000).decode("utf-8", "replace")
 
 
@@ -2998,6 +3044,7 @@ class Scanner(QWidget):
 
         def done(ok, value):
             if not ok:
+                value = tr(str(value))
                 self.set_status(tr("Update failed. {error}", error=value), "error")
                 if QMessageBox.question(self, tr("Update failed"), tr(
                         "{error}\n\nOpen the release page to download it by hand?", error=value)) \

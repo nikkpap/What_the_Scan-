@@ -1,23 +1,13 @@
-## What the Scan?! v1.0.5
+## What the Scan?! v1.0.6
 
-**Fix:** on a PC without NAPS2, v1.0.4 stopped at setup with "name 'app_path' is not defined". Fixed. Every release is now checked on GitHub with a real first start before it is published.
+**Fix: updates and downloads on Mac**
+- **The problem:** Python from python.org on macOS comes without security certificates, so every HTTPS connection failed (`CERTIFICATE_VERIFY_FAILED`). That broke update checks, the NAPS2 download and translation. The same could happen in the .app.
+- **The fix:** the app now always uses certifi's certificate list as well as the system's. It installs certifi by itself, and in the meantime uses the copy built into pip. certifi is also included in the .app, .exe and Linux builds.
+- **Clear messages instead of a cryptic error:**
+  - when macOS runs the app from a temporary read-only copy (opened straight from Downloads). Drag it to Applications first.
+  - when the app's folder can't be written to.
 
-**Linux:** if the system libraries PyQt6 needs for its window are missing (for example libEGL), the app now installs them itself (apt or dnf, asking for the administrator password), or shows the exact install command.
-
-**Διόρθωση:** σε PC χωρίς NAPS2 η v1.0.4 σταματούσε στην εγκατάσταση με το μήνυμα «name 'app_path' is not defined». Διορθώθηκε, και κάθε έκδοση ελέγχεται πλέον στο GitHub με πραγματική πρώτη εκκίνηση πριν δημοσιευτεί.
-
-**Linux:** αν λείπουν βιβλιοθήκες συστήματος που χρειάζεται το PyQt6 για το παράθυρο (π.χ. libEGL), η εφαρμογή τις εγκαθιστά μόνη της (apt ή dnf, ζητώντας κωδικό διαχειριστή) ή δείχνει την ακριβή εντολή εγκατάστασης.
-
-### From v1.0.4
-
-**New: HP Smart Tank support, including the Smart Tank 750**
-- **Model list:** the 21 HP Smart Tank all-in-ones (520 to 7605), so the right model is picked automatically.
-- **Network search:** "Find on network" now also finds HP printers and every other AirPrint / eSCL scanner (Brother, Kyocera, Ricoh…), using mDNS. Epson and Canon devices are found as before.
-- **Paper sources:** the app asks a network scanner which paper sources it has (flatbed, feeder, feeder both sides) and greys out the rest. For example, the Smart Tank 750 has a feeder but cannot scan both sides.
-- **Without a network connection:** for known models (Smart Tank 750, 7001/7005, Canon TS3150) the app uses a built-in list.
-- **"Auto" paper source:** goes straight to the flatbed on scanners without a feeder, which is faster.
-
-**Ελληνικά**
-- **Νέο:** υποστήριξη για HP Smart Tank, μαζί με το 750.
-- **Εύρεση στο δίκτυο:** βρίσκει και εκτυπωτές HP, και κάθε σαρωτή AirPrint.
-- **Πηγές χαρτιού:** όσες δεν έχει ο σαρωτής, π.χ. η διπλή όψη στο 750, εμφανίζονται γκρι.
+**Διόρθωση: ενημερώσεις και λήψεις στον Mac**
+- **Το πρόβλημα:** η Python από το python.org στον Mac δεν έχει πιστοποιητικά ασφαλείας, οπότε οι ενημερώσεις, οι λήψεις και η μετάφραση αποτύγχαναν.
+- **Η διόρθωση:** η εφαρμογή χρησιμοποιεί πλέον τα δικά της πιστοποιητικά (certifi) και τα εγκαθιστά μόνη της.
+- **Αν τρέχεις το .app κατευθείαν από τις Λήψεις:** η εφαρμογή σού ζητά να το σύρεις πρώτα στις Εφαρμογές.
