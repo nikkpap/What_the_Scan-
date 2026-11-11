@@ -2,7 +2,14 @@ name: Build and release
 
 # Raise VERSION in WhatTheScan.pyw and push to main: if release v<VERSION> does not exist yet,
 # GitHub builds the Windows .exe and the Linux binary and publishes them (with the .pyw) in a
-# new release, creating the tag itself. Pushing a v* tag or running the workflow by hand works too.
+# new release, creating the tag itself. Pushing a v* tag works too.
+# Running the workflow by hand (Actions › Build and release › Run workflow) rebuilds the current
+# version and replaces its files, e.g. to sign an existing release after adding the certificate.
+#
+# Signing the Windows .exe: add two repository secrets (Settings › Secrets and variables › Actions)
+#   WINDOWS_CERT_PFX       your code-signing certificate (.pfx) as base64 text
+#   WINDOWS_CERT_PASSWORD  the .pfx password
+# Without them the .exe is built unsigned.
 on:
   push:
     branches: [main]
@@ -27,7 +34,9 @@ jobs:
         run: |
           version=$(sed -n 's/^VERSION = "\(.*\)"/\1/p' WhatTheScan.pyw | head -1)
           echo "tag=v$version" >> "$GITHUB_OUTPUT"
-          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"; echo "Manual run: rebuilding v$version."
+          elif gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"; echo "Release v$version already exists, nothing to build."
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"; echo "Building release v$version."
@@ -69,6 +78,30 @@ jobs:
           --exclude-module PyQt6.QtWebEngineCore --exclude-module PyQt6.QtQml
           --exclude-module PyQt6.QtQuick --exclude-module PyQt6.QtMultimedia
           WhatTheScan.pyw
+
+      - name: Sign the Windows .exe
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
+          CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          if (-not $env:CERT_PFX) {
+            Write-Host "::warning::No WINDOWS_CERT_PFX secret, so the .exe is not signed."
+            exit 0
+          }
+          $pfx = Join-Path $env:RUNNER_TEMP "cert.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String(($env:CERT_PFX -replace '\s', '')))
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
+            Where-Object { $_.FullName -match '\\x64\\' } | Sort-Object FullName -Descending | Select-Object -First 1
+          & $signtool.FullName sign /f $pfx /p $env:CERT_PASSWORD /fd SHA256 `
+            /tr http://timestamp.digicert.com /td SHA256 `
+            /d "What the Scan?!" /du "https://github.com/nikkpap/What_the_Scan-" `
+            "dist\${{ matrix.asset }}"
+          $code = $LASTEXITCODE
+          Remove-Item $pfx -Force
+          if ($code) { exit $code }
+          Get-AuthenticodeSignature "dist\${{ matrix.asset }}" | Format-List Status, StatusMessage, SignerCertificate
 
       - name: Checksum
         shell: bash

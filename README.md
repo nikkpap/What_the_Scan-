@@ -64,6 +64,23 @@ missing. Install your scanner's own driver if it needs one (Settings › Scanner
 Every copy (.exe, Linux binary or .pyw) finds its own file in the release and offers the update
 from **Help › Check for updates**. It can also check by itself on startup.
 
+## Signing the Windows .exe
+
+GitHub signs the .exe automatically when the repository has your code-signing certificate:
+
+1. Export your certificate as a **.pfx** with a password (for example from CertifiCat).
+2. Turn it into text. In PowerShell, in the folder with the file:
+   `[Convert]::ToBase64String([IO.File]::ReadAllBytes("$PWD\cert.pfx")) | Set-Clipboard`
+3. On GitHub: **Settings › Secrets and variables › Actions › New repository secret**:
+   - `WINDOWS_CERT_PFX`: paste the text
+   - `WINDOWS_CERT_PASSWORD`: the .pfx password
+4. **Actions › Build and release › Run workflow** rebuilds the current release, now signed.
+   Every later release is signed automatically.
+
+A self-signed certificate shows your name as the publisher only on PCs that trust it (install its
+.cer in *Trusted Root Certification Authorities* and *Trusted Publishers*). To remove the
+SmartScreen warning on every PC you need a certificate from a public certificate authority.
+
 ## Credits
 
 Made by **Nikolaos K. Paridis** ([nikkpap](https://github.com/nikkpap)), ALU DEV TEAM.
