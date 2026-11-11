@@ -5,6 +5,7 @@ name: Build and release
 # new release, creating the tag itself. Pushing a v* tag works too.
 # Running the workflow by hand (Actions › Build and release › Run workflow) rebuilds the current
 # version and replaces its files, e.g. to sign an existing release after adding the certificate.
+# A push whose commit message contains [rebuild] does the same.
 #
 # Signing the Windows .exe: add two repository secrets (Settings › Secrets and variables › Actions)
 #   WINDOWS_CERT_PFX       your code-signing certificate (.pfx) as base64 text
@@ -31,11 +32,12 @@ jobs:
       - id: read
         env:
           GH_TOKEN: ${{ github.token }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           version=$(sed -n 's/^VERSION = "\(.*\)"/\1/p' WhatTheScan.pyw | head -1)
           echo "tag=v$version" >> "$GITHUB_OUTPUT"
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            echo "exists=false" >> "$GITHUB_OUTPUT"; echo "Manual run: rebuilding v$version."
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || printf '%s' "$COMMIT_MESSAGE" | grep -qF '[rebuild]'; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"; echo "Rebuilding v$version."
           elif gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"; echo "Release v$version already exists, nothing to build."
           else
