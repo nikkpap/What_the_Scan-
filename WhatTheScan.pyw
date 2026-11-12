@@ -1,7 +1,7 @@
 import os
 import shutil
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -9,8 +9,10 @@ import ctypes
 import getpass
 import hashlib
 import json
+import mimetypes
 import platform
 import re
+import secrets
 import socket
 import ssl
 import struct
@@ -18,12 +20,14 @@ import time
 import subprocess
 import tempfile
 import threading
+import urllib.error
 import urllib.parse
 import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from concurrent.futures import ThreadPoolExecutor
 from queue import Empty, Queue
 
-VERSION = "1.0.8"
+VERSION = "1.0.9"
 # Change this one line to rename the app everywhere.
 APP_NAME = "What the Scan?!"
 APP_TAGLINE = "Scanner busy? Now you know who."
@@ -83,7 +87,7 @@ NAPS_HASHES = {
     "win-arm64.exe": "b646a4d85a4d59208f21466a0ced4de29663f852f87462921265c67813f98a5b",
 }
 PYTHON_WIN_URL = "https://www.python.org/ftp/python/3.14.10/python-3.14.10-{arch}.exe"
-PIP_PACKAGES = ("PyQt6>=6.6,<7", "PyMuPDF>=1.24,<2", "python-docx>=1.1", "certifi")
+PIP_PACKAGES = ("PyQt6>=6.6,<7", "PyMuPDF>=1.24,<2", "python-docx>=1.1", "certifi", "segno>=1.6", "cryptography>=42")
 # NAPS2's own OCR language packs (tesseract 4 data) and their published SHA-256 checksums.
 OCR_URL = "https://github.com/cyanfish/naps2-components/releases/download/tesseract-4.0.0b4/{code}.traineddata.zip"
 OCR_SHA256 = {
@@ -985,7 +989,7 @@ def bootstrap(report):
         return runtime
     report("Checking PyQt6, PyMuPDF and python-docx…")
     env = dict(os.environ, PYTHONPATH=os.pathsep.join(sys.path))
-    probe = [sys.executable, "-c", "from PyQt6.QtWidgets import QApplication; import pymupdf, docx"]
+    probe = [sys.executable, "-c", "from PyQt6.QtWidgets import QApplication; import pymupdf, docx, segno, cryptography"]
     if run_hidden(probe, env=env, capture_output=True, timeout=30).returncode:
         ensure_pip(report)
         command = [sys.executable, "-m", "pip", "install", "--disable-pip-version-check",
@@ -1164,7 +1168,9 @@ if __name__ == "__main__":
 
 from string import Template
 
-from PyQt6.QtCore import QPoint, QPointF, QProcess, QRect, QRectF, QSettings, QSize, QStandardPaths, QTimer, Qt, QUrl
+from PyQt6.QtCore import (
+    QObject, QPoint, QPointF, QProcess, QRect, QRectF, QSettings, QSize, QStandardPaths, QTimer, Qt, QUrl, pyqtSignal,
+)
 from PyQt6.QtGui import (
     QBrush, QColor, QDesktopServices, QGuiApplication, QIcon, QImage, QKeySequence, QLinearGradient,
     QPainter, QPainterPath, QPalette, QPen, QPixmap, QRadialGradient, QShortcut,
@@ -1752,6 +1758,10 @@ def draw_icon(name, color, size=24):
         p.drawLine(QPointF(12, 3.5), QPointF(12, 14.5))
         p.drawPolyline([QPointF(7.5, 10.5), QPointF(12, 15), QPointF(16.5, 10.5)])
         p.drawPolyline([QPointF(3.5, 15.5), QPointF(3.5, 20.5), QPointF(20.5, 20.5), QPointF(20.5, 15.5)])
+    elif name == "phone":
+        p.drawRoundedRect(QRectF(6.5, 2.5, 11, 19), 2.4, 2.4)
+        p.drawLine(QPointF(10.5, 18.2), QPointF(13.5, 18.2))
+        p.drawLine(QPointF(10.8, 5.2), QPointF(13.2, 5.2))
     elif name == "chevron":
         pen.setWidthF(2.4)
         p.setPen(pen)
@@ -1883,6 +1893,134 @@ def apply_theme(mode):
 UI_LANG = "en"
 
 GR = {
+    "Phone":
+        "Κινητό",
+    "Send to your phone or receive photos from it, on the same Wi-Fi (LocalSend app or QR code)":
+        "Στείλε στο κινητό ή πάρε φωτογραφίες από αυτό, στο ίδιο Wi-Fi (εφαρμογή LocalSend ή QR code)",
+    "Send scans to your phone and receive photos from it, on the same Wi-Fi.":
+        "Στείλε σαρώσεις στο κινητό και πάρε φωτογραφίες από αυτό, στο ίδιο Wi-Fi.",
+    "Receiving from the phone":
+        "Λήψη από κινητό",
+    "Keep receiving on while the app is open":
+        "Λήψη πάντα ανοιχτή όσο τρέχει η εφαρμογή",
+    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
+        "Όταν είναι ανενεργό, η λήψη ανοίγει για {minutes} λεπτά κάθε φορά που πατάς «Κινητό».",
+    "Phone photos":
+        "Φωτογραφίες κινητού",
+    "Just save them in the scans folder":
+        "Απλή αποθήκευση στον φάκελο σαρώσεων",
+    "Make a PDF, like a scan (OCR, Word)":
+        "Μετατροπή σε PDF σαν σάρωση (OCR, Word)",
+    "Name on the phone":
+        "Όνομα στο κινητό",
+    "How it works":
+        "Πώς δουλεύει",
+    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. Κινητό και υπολογιστής στο ίδιο Wi-Fi.\n2. Εγκατέστησε τη δωρεάν εφαρμογή LocalSend στο κινητό ή απλά σκάναρε το QR code.\n3. Πάτα «Κινητό», δίπλα στην Προεπισκόπηση, διάλεξε το κινητό και «Αποστολή».\n4. Για αποστολή από το κινητό: στο LocalSend διάλεξε «{name}» ή χρησιμοποίησε τη σελίδα του QR.",
+    "Get LocalSend":
+        "Κατέβασε το LocalSend",
+    "Idle · making a PDF from phone photos":
+        "Αδρανές · φτιάχνω PDF από φωτογραφίες κινητού",
+    "✓ Made {file} from {count} phone photo(s)":
+        "✓ Δημιουργήθηκε το {file} από {count} φωτογραφίες κινητού",
+    "Windows may now ask whether {app} can use the network.\n\nTick “Private networks” and click Allow, so your phone can reach this computer.":
+        "Τα Windows μπορεί τώρα να ρωτήσουν αν το {app} μπορεί να χρησιμοποιεί το δίκτυο.\n\nΤσέκαρε «Ιδιωτικά δίκτυα» και πάτα «Να επιτρέπεται», ώστε το κινητό να βλέπει τον υπολογιστή.",
+    "The phone connection could not start. Another program may be using the network ports {ports}.":
+        "Η σύνδεση με το κινητό δεν ξεκίνησε. Κάποιο άλλο πρόγραμμα μπορεί να χρησιμοποιεί τις θύρες δικτύου {ports}.",
+    "Receiving is off. Press Phone to open it again.":
+        "Η λήψη είναι κλειστή. Πάτα «Κινητό» για να ανοίξει ξανά.",
+    "Receiving is on: the phone can send files to “{name}”.":
+        "Η λήψη είναι ανοιχτή: το κινητό μπορεί να στείλει αρχεία στο «{name}».",
+    "Receiving is on for {time}: the phone can send files to “{name}”.":
+        "Η λήψη είναι ανοιχτή για {time}: το κινητό μπορεί να στείλει αρχεία στο «{name}».",
+    "… and {count} more":
+        "… και {count} ακόμη",
+    "Files from a phone":
+        "Αρχεία από κινητό",
+    "“{sender}” wants to send {count} file(s):":
+        "Το «{sender}» θέλει να στείλει {count} αρχεία:",
+    "They will be saved in {folder}.":
+        "Θα αποθηκευτούν στο {folder}.",
+    "Accept":
+        "Αποδοχή",
+    "Decline":
+        "Απόρριψη",
+    "Receiving files from {sender}…":
+        "Λήψη αρχείων από {sender}…",
+    "✓ Received {count} file(s) from {sender} in {folder}":
+        "✓ Ελήφθησαν {count} αρχεία από {sender} στο {folder}",
+    "The photos were saved as they are, because a scan is running.":
+        "Οι φωτογραφίες αποθηκεύτηκαν όπως είναι, γιατί τρέχει σάρωση.",
+    "Making a PDF from {count} phone photo(s)…":
+        "Φτιάχνω PDF από {count} φωτογραφίες κινητού…",
+    "This link has expired. Scan the QR code again.":
+        "Ο σύνδεσμος έληξε. Σκάναρε ξανά το QR code.",
+    "No scan yet. Scan something first, then reload this page.":
+        "Δεν υπάρχει ακόμη σάρωση. Σκάναρε πρώτα και μετά ανανέωσε τη σελίδα.",
+    "Waiting for the computer to accept…":
+        "Περιμένω να πατηθεί «Αποδοχή» στον υπολογιστή…",
+    "The computer declined the files.":
+        "Ο υπολογιστής απέρριψε τα αρχεία.",
+    "The computer is receiving other files. Try again in a moment.":
+        "Ο υπολογιστής λαμβάνει άλλα αρχεία. Δοκίμασε ξανά σε λίγο.",
+    "Sending failed. Check that the phone is on the same Wi-Fi and try again.":
+        "Η αποστολή απέτυχε. Έλεγξε ότι το κινητό είναι στο ίδιο Wi-Fi και δοκίμασε ξανά.",
+    "Sending {name}…":
+        "Αποστολή {name}…",
+    "✓ Sent! The files are on the computer.":
+        "✓ Στάλθηκαν! Τα αρχεία είναι στον υπολογιστή.",
+    "1 · Get the scan on this phone":
+        "1 · Πάρε τη σάρωση σε αυτό το κινητό",
+    "Reload":
+        "Ανανέωση",
+    "2 · Send photos or files to the computer":
+        "2 · Στείλε φωτογραφίες ή αρχεία στον υπολογιστή",
+    "Take a photo or choose files":
+        "Βγάλε φωτογραφία ή διάλεξε αρχεία",
+    "Send to your phone":
+        "Στείλε στο κινητό",
+    "Phone and computer must be on the same Wi-Fi.":
+        "Κινητό και υπολογιστής πρέπει να είναι στο ίδιο Wi-Fi.",
+    "Choose other files…":
+        "Άλλα αρχεία…",
+    "Phones with LocalSend":
+        "Κινητά με LocalSend",
+    "Send":
+        "Αποστολή",
+    "No LocalSend? Scan this":
+        "Χωρίς LocalSend; Σκάναρε αυτό",
+    "Point the phone camera at the code. A page opens where you can download the scan and send photos to this computer.":
+        "Στρέψε την κάμερα του κινητού στον κωδικό. Ανοίγει μια σελίδα για να κατεβάσεις τη σάρωση και να στείλεις φωτογραφίες σε αυτόν τον υπολογιστή.",
+    "QR code not available.":
+        "Το QR code δεν είναι διαθέσιμο.",
+    "To send: {names}  ({size})":
+        "Για αποστολή: {names}  ({size})",
+    "Nothing to send yet. Scan first, or choose files.":
+        "Τίποτα για αποστολή ακόμη. Σκάναρε πρώτα ή διάλεξε αρχεία.",
+    "Choose files for the phone":
+        "Διάλεξε αρχεία για το κινητό",
+    "Looking for phones… Open LocalSend on the phone.":
+        "Ψάχνω κινητά… Άνοιξε το LocalSend στο κινητό.",
+    "No phone found.\n1. Is the phone on the same Wi-Fi?\n2. Open the LocalSend app on the phone (free, Play Store / App Store).\n3. Or simply scan the QR code on the right.":
+        "Δεν βρέθηκε κινητό.\n1. Είναι το κινητό στο ίδιο Wi-Fi;\n2. Άνοιξε την εφαρμογή LocalSend στο κινητό (δωρεάν, Play Store / App Store).\n3. Ή απλά σκάναρε το QR code δεξιά.",
+    "Waiting for {phone} to accept… Tap Accept on the phone.":
+        "Περιμένω το {phone} να δεχτεί… Πάτα «Αποδοχή» στο κινητό.",
+    "Sending to {phone}… {value}%":
+        "Αποστολή στο {phone}… {value}%",
+    "{phone} declined the files.":
+        "Το {phone} απέρριψε τα αρχεία.",
+    "{phone} is busy with another transfer. Try again in a moment.":
+        "Το {phone} κάνει άλλη μεταφορά. Δοκίμασε ξανά σε λίγο.",
+    "{phone} asks for a PIN. Turn off the PIN in LocalSend settings on the phone.":
+        "Το {phone} ζητά PIN. Απενεργοποίησε το PIN στις ρυθμίσεις του LocalSend στο κινητό.",
+    "Could not reach {phone}. Is LocalSend open and on the same Wi-Fi?":
+        "Δεν βρέθηκε το {phone}. Είναι ανοιχτό το LocalSend και στο ίδιο Wi-Fi;",
+    "Sending cancelled.":
+        "Η αποστολή ακυρώθηκε.",
+    "✓ Sent {count} file(s) to {phone}.":
+        "✓ Στάλθηκαν {count} αρχεία στο {phone}.",
+    "Sending failed. {error}":
+        "Η αποστολή απέτυχε. {error}",
     "Also save an editable document (text from OCR)":
         "Αποθήκευση και ως επεξεργάσιμο έγγραφο (κείμενο από OCR)",
     "Document": "Έγγραφο",
@@ -2358,6 +2496,928 @@ ENGINES = [("Google Translate (free)", "google"), ("MyMemory (free)", "mymemory"
 ENGINE_NAMES = {"google": "Google Translate", "mymemory": "MyMemory", "libre": "LibreTranslate"}
 
 
+# ---------------------------------------------------------------- phone: LocalSend + QR web page
+# Send scans to a phone and receive photos/files from it on the same Wi-Fi. Phones with the free LocalSend
+# app see this computer like any other LocalSend device (protocol v2: multicast discovery, HTTPS REST upload).
+# Phones without it scan a QR code and use a small web page in their browser.
+LOCALSEND_GROUP = "224.0.0.167"
+LOCALSEND_PORT = 53317
+PHONE_WEB_PORT = 53320
+PHONE_OPEN_MINUTES = 5
+PHONE_ASK_SECONDS = 75
+PHONE_IMAGES = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
+LOCALSEND_URL = "https://localsend.org"
+PHONE_MIME = {
+    ".pdf": "application/pdf", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
+    ".txt": "text/plain", ".odt": "application/vnd.oasis.opendocument.text",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+}
+DEVICE_MODEL = "Windows" if WINDOWS else "macOS" if MAC else "Linux"
+
+
+class PhoneError(Exception):
+    pass
+
+
+def mime_type(path):
+    suffix = Path(path).suffix.lower()
+    return PHONE_MIME.get(suffix) or mimetypes.guess_type(str(path))[0] or "application/octet-stream"
+
+
+def lan_ip():
+    """This computer's address on the Wi-Fi / LAN (no packet is sent)."""
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        probe.connect(("10.255.255.255", 1))
+        return probe.getsockname()[0]
+    except OSError:
+        return "127.0.0.1"
+    finally:
+        probe.close()
+
+
+def safe_file_name(name):
+    name = Path(str(name or "").replace("\\", "/")).name
+    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name).strip(" .")
+    if not name:
+        return "file"
+    stem, suffix = os.path.splitext(name)
+    return stem[:140] + suffix[:12]
+
+
+def readable_size(size):
+    size = float(size or 0)
+    for unit in ("B", "KB", "MB", "GB"):
+        if size < 1024 or unit == "GB":
+            return f"{size:.0f} {unit}" if unit == "B" else f"{size:.1f} {unit}"
+        size /= 1024
+
+
+def phone_certificate(folder):
+    """LocalSend talks HTTPS with a self-signed certificate. Made once, kept next to the app's data.
+    Returns (cert file, key file, fingerprint) or None when the cryptography package is missing."""
+    try:
+        from cryptography import x509
+        from cryptography.hazmat.primitives import hashes, serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+        from cryptography.x509.oid import NameOID
+    except ImportError:
+        return None
+    cert, key = folder / "localsend-cert.pem", folder / "localsend-key.pem"
+    if not (cert.is_file() and key.is_file()):
+        folder.mkdir(parents=True, exist_ok=True)
+        private = ec.generate_private_key(ec.SECP256R1())
+        name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "What the Scan")])
+        now = datetime.now(timezone.utc)
+        certificate = (x509.CertificateBuilder().subject_name(name).issuer_name(name)
+                       .public_key(private.public_key()).serial_number(x509.random_serial_number())
+                       .not_valid_before(now - timedelta(days=1)).not_valid_after(now + timedelta(days=3650))
+                       .sign(private, hashes.SHA256()))
+        key.write_bytes(private.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                              serialization.NoEncryption()))
+        cert.write_bytes(certificate.public_bytes(serialization.Encoding.PEM))
+    der = ssl.PEM_cert_to_DER_cert(cert.read_text(encoding="ascii"))
+    return cert, key, hashlib.sha256(der).hexdigest().upper()
+
+
+class _Counting:
+    """File wrapper that reports how many bytes were read (upload progress)."""
+
+    def __init__(self, source, report):
+        self.source, self.report = source, report
+
+    def read(self, size=-1):
+        chunk = self.source.read(size if size and size > 0 else 256 * 1024)
+        if chunk:
+            self.report(len(chunk))
+        return chunk
+
+
+class _Server(ThreadingHTTPServer):
+    daemon_threads = True
+    allow_reuse_address = not WINDOWS  # on Windows this would let two programs share the port
+
+    def handle_error(self, request, client_address):
+        pass  # phones that disappear mid-request are normal
+
+
+class PhoneLink:
+    """Background part: LocalSend server + multicast discovery + the QR web page. Thread-safe; the window
+    receives events through `events` (device_found, ask_user, files_received), called from server threads."""
+
+    def __init__(self, alias, data_folder, events):
+        self.alias = alias
+        self.data_folder = data_folder
+        self.events = events
+        self.lock = threading.Lock()
+        self.devices = {}
+        self.session = None
+        self.servers = []
+        self.running = False
+        self.port = LOCALSEND_PORT
+        self.web_port = None
+        self.protocol = "http"
+        self.fingerprint = uuid4().hex
+        self.token = secrets.token_urlsafe(9)
+        self.save_folder = Path.home()
+        self.shared = []
+        self.multicast = None
+        self.opener = urllib.request.build_opener(  # LAN only: never through a system proxy
+            urllib.request.ProxyHandler({}),
+            urllib.request.HTTPSHandler(context=ssl._create_unverified_context()))
+
+    # ----- identity
+    def info(self):
+        return {"alias": self.alias, "version": "2.1", "deviceModel": DEVICE_MODEL, "deviceType": "desktop",
+                "fingerprint": self.fingerprint, "port": self.port, "protocol": self.protocol, "download": False}
+
+    def web_url(self):
+        return f"http://{lan_ip()}:{self.web_port}/?t={self.token}" if self.web_port else ""
+
+    # ----- start / stop
+    def start(self):
+        if self.running:
+            return True
+        try:
+            certificate = phone_certificate(self.data_folder)
+        except Exception:
+            certificate = None
+        server = None
+        for port in (LOCALSEND_PORT, *range(LOCALSEND_PORT + 1, LOCALSEND_PORT + 3)):
+            try:
+                server = _Server(("", port), _localsend_handler(self))
+                break
+            except OSError:
+                continue
+        web = None
+        for port in range(PHONE_WEB_PORT, PHONE_WEB_PORT + 10):
+            try:
+                web = _Server(("", port), _web_handler(self))
+                break
+            except OSError:
+                continue
+        if server is None and web is None:
+            return False
+        if server is not None:
+            self.port = server.server_address[1]
+            if certificate:
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                context.load_cert_chain(str(certificate[0]), str(certificate[1]))
+                server.socket = context.wrap_socket(server.socket, server_side=True, do_handshake_on_connect=False)
+                self.protocol, self.fingerprint = "https", certificate[2]
+            self.servers.append(server)
+        if web is not None:
+            self.web_port = web.server_address[1]
+            self.servers.append(web)
+        self.running = True
+        for item in self.servers:
+            threading.Thread(target=item.serve_forever, kwargs={"poll_interval": 0.5}, daemon=True).start()
+        if server is not None:
+            threading.Thread(target=self._listen_multicast, daemon=True).start()
+            self.announce()
+        return True
+
+    def stop(self):
+        self.running = False
+        for server in self.servers:
+            threading.Thread(target=lambda s=server: (s.shutdown(), s.server_close()), daemon=True).start()
+        self.servers = []
+        self.web_port = None
+        with self.lock:
+            self.session = None
+        if self.multicast:
+            try:
+                self.multicast.close()
+            except OSError:
+                pass
+            self.multicast = None
+
+    # ----- discovery
+    def _listen_multicast(self):
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            if hasattr(socket, "SO_REUSEPORT") and not LINUX:
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+            sock.bind(("", LOCALSEND_PORT))
+            for interface in dict.fromkeys((lan_ip(), "0.0.0.0")):
+                try:
+                    sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP,
+                                    socket.inet_aton(LOCALSEND_GROUP) + socket.inet_aton(interface))
+                except OSError:
+                    pass
+            sock.settimeout(1.0)
+        except OSError:
+            return
+        self.multicast = sock
+        while self.running:
+            try:
+                data, address = sock.recvfrom(65535)
+                message = json.loads(data.decode("utf-8"))
+            except socket.timeout:
+                continue
+            except (OSError, ValueError):
+                if not self.running:
+                    break
+                continue
+            if not isinstance(message, dict) or message.get("fingerprint") == self.fingerprint:
+                continue
+            self.add_device(message, address[0])
+            if message.get("announce") or message.get("announcement"):
+                threading.Thread(target=self._answer, args=(address[0], message), daemon=True).start()
+
+    def _answer(self, ip, message):
+        device = {"ip": ip, "port": int(message.get("port") or LOCALSEND_PORT),
+                  "protocol": message.get("protocol") or "https"}
+        try:
+            self.request(device, "register", self.info(), timeout=3)
+        except Exception:
+            self._multicast_send(announce=False)
+
+    def _multicast_send(self, announce=True):
+        payload = dict(self.info(), announce=announce, announcement=announce)
+        try:
+            sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+            sender.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
+            try:
+                sender.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, socket.inet_aton(lan_ip()))
+            except OSError:
+                pass
+            sender.sendto(json.dumps(payload).encode(), (LOCALSEND_GROUP, LOCALSEND_PORT))
+            sender.close()
+        except OSError:
+            pass
+
+    def announce(self):
+        if self.running:
+            self._multicast_send(announce=True)
+
+    def scan_network(self):
+        """Fallback for Wi-Fi routers that block multicast: ask every address on the local /24 network."""
+        own = lan_ip()
+        if own.startswith("127."):
+            return
+        prefix = own.rsplit(".", 1)[0]
+
+        def probe(host):
+            if not self.running:
+                return
+            for protocol in ("https", "http"):
+                device = {"ip": host, "port": LOCALSEND_PORT, "protocol": protocol}
+                try:
+                    status, body = self.request(device, "register", self.info(), timeout=1.5)
+                except Exception:
+                    continue
+                if status == 200:
+                    try:
+                        self.add_device(dict(json.loads(body or b"{}"), protocol=protocol, port=LOCALSEND_PORT), host)
+                    except ValueError:
+                        pass
+                    return
+
+        with ThreadPoolExecutor(max_workers=48) as pool:
+            list(pool.map(probe, [f"{prefix}.{n}" for n in range(1, 255) if f"{prefix}.{n}" != own]))
+
+    def add_device(self, message, ip):
+        if not isinstance(message, dict) or message.get("fingerprint") == self.fingerprint:
+            return
+        device = {"alias": str(message.get("alias") or ip)[:60], "deviceModel": str(message.get("deviceModel") or ""),
+                  "deviceType": str(message.get("deviceType") or ""), "ip": ip,
+                  "port": int(message.get("port") or LOCALSEND_PORT),
+                  "protocol": message.get("protocol") if message.get("protocol") in ("http", "https") else "https",
+                  "fingerprint": str(message.get("fingerprint") or ip)}
+        with self.lock:
+            known = self.devices.get(device["fingerprint"])
+            self.devices[device["fingerprint"]] = device
+        if known != device:
+            self.events.device_found(device)
+
+    # ----- sending (computer -> phone)
+    def request(self, device, route, body=None, stream=None, length=0, query=None, timeout=10):
+        url = f"{device['protocol']}://{device['ip']}:{device['port']}/api/localsend/v2/{route}"
+        if query:
+            url += "?" + urllib.parse.urlencode(query)
+        if stream is not None:
+            data, headers = stream, {"Content-Type": "application/octet-stream", "Content-Length": str(length)}
+        else:
+            data = json.dumps(body if body is not None else {}).encode()
+            headers = {"Content-Type": "application/json"}
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        try:
+            with self.opener.open(req, timeout=timeout) as answer:
+                return answer.status, answer.read()
+        except urllib.error.HTTPError as exc:
+            return exc.code, exc.read()
+
+    def send(self, device, paths, progress, cancelled):
+        files, by_id = {}, {}
+        for path in paths:
+            file_id = uuid4().hex
+            by_id[file_id] = path
+            files[file_id] = {"id": file_id, "fileName": path.name, "size": path.stat().st_size,
+                              "fileType": mime_type(path)}
+        progress(0, "ask")
+        try:
+            status, body = self.request(device, "prepare-upload", {"info": self.info(), "files": files},
+                                        timeout=PHONE_ASK_SECONDS + 30)
+        except (OSError, ValueError) as exc:
+            raise PhoneError("unreachable") from exc
+        if status == 204:
+            return
+        if status in (401, 403, 409, 429):
+            raise PhoneError({401: "pin", 403: "declined", 409: "busy", 429: "busy"}[status])
+        if status != 200:
+            raise PhoneError(f"HTTP {status}")
+        answer = json.loads(body or b"{}")
+        session, tokens = answer.get("sessionId"), answer.get("files") or {}
+        total = sum(files[f]["size"] for f in tokens if f in files) or 1
+        sent = [0]
+
+        def counted(count):
+            sent[0] += count
+            progress(int(sent[0] * 100 / total), "send")
+            if cancelled():
+                raise PhoneError("cancelled")
+
+        try:
+            for file_id, token in tokens.items():
+                path = by_id.get(file_id)
+                if path is None:
+                    continue
+                with path.open("rb") as source:
+                    status, _ = self.request(device, "upload", stream=_Counting(source, counted),
+                                             length=files[file_id]["size"], timeout=60,
+                                             query={"sessionId": session, "fileId": file_id, "token": token})
+                if status != 200:
+                    raise PhoneError(f"HTTP {status}")
+        except Exception:
+            try:
+                self.request(device, "cancel", query={"sessionId": session}, timeout=3)
+            except Exception:
+                pass
+            raise
+
+    # ----- receiving (phone -> computer)
+    def prepare(self, sender, files, ip):
+        """Ask the user, then open an upload session. Returns (HTTP status, JSON answer)."""
+        if not isinstance(files, dict) or not files or len(files) > 500:
+            return 400, None
+        with self.lock:
+            busy = self.session and time.monotonic() - self.session["touched"] < 600
+        if busy:
+            return 409, {"message": "Another transfer is running"}
+        wanted = [(safe_file_name(item.get("fileName")), int(item.get("size") or 0))
+                  for item in files.values() if isinstance(item, dict)]
+        name = str((sender or {}).get("alias") or ip)[:60]
+        if not self.events.ask_user(name, wanted):
+            return 403, {"message": "Declined"}
+        folder = Path(self.save_folder)
+        folder.mkdir(parents=True, exist_ok=True)
+        taken, entries = set(), {}
+        for file_id, item in files.items():
+            target = unique_path(folder / safe_file_name(item.get("fileName")))
+            number = 2
+            while target in taken:
+                base = folder / safe_file_name(item.get("fileName"))
+                target = unique_path(base.with_name(f"{base.stem} ({number}){base.suffix}"))
+                number += 1
+            taken.add(target)
+            entries[str(file_id)] = {"target": target, "token": secrets.token_hex(16), "done": False,
+                                     "size": int(item.get("size") or 0)}
+        session = {"id": uuid4().hex, "files": entries, "sender": name, "touched": time.monotonic()}
+        with self.lock:
+            self.session = session
+        return 200, {"sessionId": session["id"], "files": {k: v["token"] for k, v in entries.items()}}
+
+    def store(self, session_id, file_id, token, source, length):
+        with self.lock:
+            session = self.session
+        if not session or session["id"] != session_id:
+            return 403
+        entry = session["files"].get(str(file_id))
+        if not entry or not secrets.compare_digest(entry["token"], str(token or "")) or entry["done"]:
+            return 403
+        if length < 0:
+            return 411
+        part = entry["target"].with_name(entry["target"].name + ".part")
+        remaining = length
+        try:
+            with part.open("wb") as out:
+                while remaining > 0:
+                    chunk = source.read(min(remaining, 256 * 1024))
+                    if not chunk:
+                        break
+                    out.write(chunk)
+                    remaining -= len(chunk)
+                    session["touched"] = time.monotonic()
+            if remaining:
+                raise OSError("incomplete")
+            part.replace(entry["target"])
+        except OSError:
+            part.unlink(missing_ok=True)
+            return 500
+        entry["done"] = True
+        finished = False
+        with self.lock:
+            if self.session is session and all(item["done"] for item in session["files"].values()):
+                self.session, finished = None, True
+        if finished:
+            self.events.files_received([item["target"] for item in session["files"].values()], session["sender"])
+        return 200
+
+    def cancel(self, session_id):
+        with self.lock:
+            session = self.session
+            if not session or session["id"] != session_id:
+                return
+            self.session = None
+        done = [item["target"] for item in session["files"].values() if item["done"]]
+        if done:
+            self.events.files_received(done, session["sender"])
+
+
+class _Handler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+    server_version = "WhatTheScan"
+    link = None
+
+    def setup(self):
+        self.request.settimeout(60)
+        if isinstance(self.request, ssl.SSLSocket):
+            self.request.do_handshake()
+        super().setup()
+
+    def log_message(self, *args):
+        pass
+
+    def reply(self, code, payload=None, content_type="application/json", extra=None):
+        if payload is None:
+            body = b""
+        elif isinstance(payload, bytes):
+            body = payload
+        else:
+            body = json.dumps(payload).encode()
+        self.close_connection = True
+        self.send_response(code)
+        if body:
+            self.send_header("Content-Type", content_type)
+        for key, value in (extra or {}).items():
+            self.send_header(key, value)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Connection", "close")
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(body)
+
+    def json_body(self):
+        length = int(self.headers.get("Content-Length") or 0)
+        if not 0 <= length <= 4_000_000:
+            raise ValueError("body too large")
+        return json.loads(self.rfile.read(length) or b"{}")
+
+    def route(self):
+        parts = urllib.parse.urlsplit(self.path)
+        return parts.path, dict(urllib.parse.parse_qsl(parts.query))
+
+
+def _localsend_handler(link):
+    class LocalSendHandler(_Handler):
+        def do_GET(self):
+            path, _ = self.route()
+            self.reply(200, link.info()) if path.endswith("/info") else self.reply(404)
+
+        def do_POST(self):
+            path, query = self.route()
+            try:
+                if path.endswith("/register"):
+                    link.add_device(self.json_body(), self.client_address[0])
+                    self.reply(200, link.info())
+                elif path == "/api/localsend/v2/prepare-upload":
+                    data = self.json_body()
+                    self.reply(*link.prepare(data.get("info"), data.get("files"), self.client_address[0]))
+                elif path == "/api/localsend/v2/upload":
+                    self.reply(link.store(query.get("sessionId"), query.get("fileId"), query.get("token"),
+                                          self.rfile, int(self.headers.get("Content-Length") or -1)))
+                elif path == "/api/localsend/v2/cancel":
+                    link.cancel(query.get("sessionId"))
+                    self.reply(200)
+                else:
+                    self.reply(404)
+            except (ValueError, TypeError, AttributeError):
+                self.reply(400)
+
+    return LocalSendHandler
+
+
+def _web_handler(link):
+    class WebHandler(_Handler):
+        def allowed(self, query):
+            return secrets.compare_digest(str(query.get("t", "")), link.token)
+
+        def do_GET(self):
+            path, query = self.route()
+            if not self.allowed(query):
+                self.reply(403, tr("This link has expired. Scan the QR code again.").encode(), "text/plain; charset=utf-8")
+            elif path == "/":
+                self.reply(200, phone_page(link).encode(), "text/html; charset=utf-8",
+                           {"Cache-Control": "no-store"})
+            elif path.startswith("/file/"):
+                try:
+                    target = list(link.shared)[int(path.rsplit("/", 1)[1])]
+                    size = target.stat().st_size
+                except (ValueError, IndexError, OSError):
+                    self.reply(404)
+                    return
+                self.close_connection = True
+                self.send_response(200)
+                self.send_header("Content-Type", mime_type(target))
+                self.send_header("Content-Length", str(size))
+                self.send_header("Content-Disposition",
+                                 f"attachment; filename*=UTF-8''{urllib.parse.quote(target.name)}")
+                self.send_header("Connection", "close")
+                self.end_headers()
+                with target.open("rb") as source:
+                    shutil.copyfileobj(source, self.wfile, 256 * 1024)
+            else:
+                self.reply(404)
+
+        def do_POST(self):
+            path, query = self.route()
+            if not self.allowed(query):
+                self.reply(403)
+                return
+            try:
+                if path == "/prepare":
+                    data = self.json_body()
+                    files = {str(n): {"fileName": item.get("name"), "size": item.get("size")}
+                             for n, item in enumerate(data.get("files") or [])}
+                    agent = self.headers.get("User-Agent", "")
+                    phone = "iPhone" if "iPhone" in agent else "Android" if "Android" in agent else tr("Phone")
+                    self.reply(*link.prepare({"alias": tr("{phone} (browser)", phone=phone)}, files,
+                                             self.client_address[0]))
+                elif path == "/upload":
+                    self.reply(link.store(query.get("s"), query.get("f"), query.get("k"), self.rfile,
+                                          int(self.headers.get("Content-Length") or -1)))
+                elif path == "/cancel":
+                    link.cancel(query.get("s"))
+                    self.reply(200)
+                else:
+                    self.reply(404)
+            except (ValueError, TypeError, AttributeError):
+                self.reply(400)
+
+    return WebHandler
+
+
+def phone_page(link):
+    """The page a phone without LocalSend opens from the QR code: download the scan, send photos."""
+    def esc(text):
+        return (str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;"))
+
+    files = [path for path in link.shared if path.exists()]
+    rows = "".join(
+        f'<a class="file" href="/file/{n}?t={link.token}"><span>⬇</span><b>{esc(path.name)}</b>'
+        f'<small>{readable_size(path.stat().st_size)}</small></a>'
+        for n, path in enumerate(link.shared) if path in files
+    ) or f'<p class="muted">{esc(tr("No scan yet. Scan something first, then reload this page."))}</p>'
+    messages = json.dumps({
+        "wait": tr("Waiting for the computer to accept…"), "declined": tr("The computer declined the files."),
+        "busy": tr("The computer is receiving other files. Try again in a moment."),
+        "error": tr("Sending failed. Check that the phone is on the same Wi-Fi and try again."),
+        "sending": tr("Sending {name}…", name="%s"), "done": tr("✓ Sent! The files are on the computer."),
+    })
+    lang = "el" if UI_LANG == "el" else "en"
+    return f"""<!DOCTYPE html><html lang="{lang}"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>{esc(APP_NAME)}</title>
+<style>
+:root{{--bg:#f5f3ff;--card:#fff;--text:#1f1b2e;--muted:#6b6880;--accent:#6d28d9;--line:#e4e0f2}}
+@media (prefers-color-scheme:dark){{:root{{--bg:#14121c;--card:#1f1c2b;--text:#f1eefb;--muted:#a19cb8;--line:#2f2a40}}}}
+*{{box-sizing:border-box}}body{{margin:0;font:16px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}}
+main{{max-width:560px;margin:auto;padding:22px 16px 40px}}h1{{font-size:22px;margin:4px 0 2px}}
+.muted{{color:var(--muted)}}section{{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-top:16px}}
+h2{{font-size:17px;margin:0 0 10px}}.file{{display:flex;gap:12px;align-items:center;padding:14px;border-radius:14px;
+background:var(--bg);color:var(--text);text-decoration:none;margin-top:8px;border:1px solid var(--line)}}
+.file span{{font-size:20px;color:var(--accent)}}.file b{{flex:1;word-break:break-all;font-weight:600}}
+label.pick{{display:block;text-align:center;padding:18px;border-radius:14px;background:var(--accent);color:#fff;font-weight:700;font-size:18px}}
+input{{display:none}}progress{{width:100%;height:10px;margin-top:12px;display:none}}#status{{margin-top:10px;font-weight:600}}
+a.reload{{color:var(--accent)}}
+</style></head><body><main>
+<h1>📄 {esc(APP_NAME)}</h1><div class="muted">{esc(tr("Connected to {name}", name=link.alias))}</div>
+<section><h2>{esc(tr("1 · Get the scan on this phone"))}</h2>{rows}
+<p class="muted"><a class="reload" href="?t={link.token}">↻ {esc(tr("Reload"))}</a></p></section>
+<section><h2>{esc(tr("2 · Send photos or files to the computer"))}</h2>
+<label class="pick" for="pick">📷 {esc(tr("Take a photo or choose files"))}</label>
+<input id="pick" type="file" multiple accept="image/*,application/pdf">
+<progress id="bar" max="100" value="0"></progress><div id="status"></div></section>
+</main><script>
+const M={messages},T=new URLSearchParams(location.search).get('t'),bar=document.getElementById('bar'),
+st=document.getElementById('status');
+function put(url,file,done,total){{return new Promise((ok,fail)=>{{const x=new XMLHttpRequest();x.open('POST',url);
+x.upload.onprogress=e=>{{bar.value=Math.round((done+e.loaded)*100/total)}};
+x.onload=()=>x.status==200?ok():fail(x.status);x.onerror=()=>fail(0);x.send(file)}})}}
+document.getElementById('pick').onchange=async e=>{{const files=[...e.target.files];if(!files.length)return;
+st.textContent=M.wait;bar.style.display='none';
+try{{const r=await fetch('/prepare?t='+T,{{method:'POST',headers:{{'Content-Type':'application/json'}},
+body:JSON.stringify({{files:files.map(f=>({{name:f.name,size:f.size}}))}})}});
+if(r.status==403){{st.textContent=M.declined;return}}if(r.status==409){{st.textContent=M.busy;return}}
+if(!r.ok)throw 0;const s=await r.json(),total=files.reduce((a,f)=>a+f.size,0)||1;let done=0;bar.style.display='block';
+for(let i=0;i<files.length;i++){{st.textContent=M.sending.replace('%s',files[i].name);
+await put('/upload?t='+T+'&s='+s.sessionId+'&f='+i+'&k='+s.files[i],files[i],done,total);done+=files[i].size}}
+bar.value=100;st.textContent=M.done}}catch(x){{st.textContent=M.error}}e.target.value=''}};
+</script></body></html>"""
+
+
+def qr_pixmap(text, size=220):
+    """QR code drawn with Qt from segno's matrix; None if segno is missing."""
+    try:
+        import segno
+    except ImportError:
+        return None
+    rows = [list(row) for row in segno.make(text, error="m", micro=False).matrix_iter(scale=1, border=3)]
+    count = len(rows)
+    cell = max(2, size // count)
+    pixmap = QPixmap(cell * count, cell * count)
+    pixmap.fill(QColor("#ffffff"))
+    painter = QPainter(pixmap)
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(QColor("#111111"))
+    for y, row in enumerate(rows):
+        for x, dark in enumerate(row):
+            if dark:
+                painter.drawRect(x * cell, y * cell, cell, cell)
+    painter.end()
+    return pixmap
+
+
+class PhoneBridge(QObject):
+    """Moves PhoneLink events from its threads to the GUI thread."""
+    device = pyqtSignal(dict)
+    asked = pyqtSignal(object)
+    received = pyqtSignal(list, str)
+    send_progress = pyqtSignal(int, str)
+    send_done = pyqtSignal(str)
+
+    def device_found(self, device):
+        self.device.emit(device)
+
+    def ask_user(self, sender, files):
+        request = {"sender": sender, "files": files, "event": threading.Event(), "ok": False}
+        self.asked.emit(request)
+        request["event"].wait(PHONE_ASK_SECONDS + 5)
+        return request["ok"]
+
+    def files_received(self, paths, sender):
+        self.received.emit([str(path) for path in paths], sender)
+
+
+class PhoneDialog(QDialog):
+    def __init__(self, window):
+        super().__init__(window)
+        self.main = window
+        self.setWindowTitle(f"{APP_NAME} · {tr('Phone')}")
+        self.setMinimumWidth(780)
+        self.files = []
+        self.sending = False
+        self.cancel_send = False
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(24, 20, 24, 18)
+        outer.setSpacing(12)
+        heading = QLabel(tr("Send to your phone"))
+        heading.setObjectName("pageTitle")
+        outer.addWidget(heading)
+        note = QLabel(tr("Phone and computer must be on the same Wi-Fi."))
+        note.setObjectName("hint")
+        outer.addWidget(note)
+
+        what = QFrame()
+        what.setObjectName("section")
+        what_row = QHBoxLayout(what)
+        what_row.setContentsMargins(16, 12, 16, 12)
+        self.what_label = QLabel()
+        self.what_label.setWordWrap(True)
+        self.what_label.setTextFormat(Qt.TextFormat.PlainText)
+        what_row.addWidget(self.what_label, 1)
+        choose = QPushButton(tr("Choose other files…"))
+        window.iconize(choose, "folder")
+        choose.clicked.connect(self.choose_files)
+        what_row.addWidget(choose)
+        outer.addWidget(what)
+
+        columns = QHBoxLayout()
+        columns.setSpacing(14)
+        left = QFrame()
+        left.setObjectName("section")
+        box = QVBoxLayout(left)
+        box.setContentsMargins(16, 14, 16, 14)
+        title = QLabel(tr("Phones with LocalSend"))
+        title.setObjectName("sectionTitle")
+        box.addWidget(title)
+        self.devices = QListWidget()
+        self.devices.setIconSize(QSize(22, 22))
+        self.devices.setMinimumHeight(150)
+        self.devices.itemDoubleClicked.connect(lambda _: self.send())
+        self.devices.currentRowChanged.connect(lambda _: self.update_buttons())
+        box.addWidget(self.devices, 1)
+        self.empty_hint = QLabel()
+        self.empty_hint.setObjectName("hint")
+        self.empty_hint.setWordWrap(True)
+        box.addWidget(self.empty_hint)
+        self.bar = QProgressBar()
+        self.bar.setRange(0, 100)
+        self.bar.setTextVisible(False)
+        self.bar.setFixedHeight(6)
+        self.bar.hide()
+        box.addWidget(self.bar)
+        self.send_status = QLabel()
+        self.send_status.setWordWrap(True)
+        self.send_status.setTextFormat(Qt.TextFormat.PlainText)
+        box.addWidget(self.send_status)
+        buttons = QHBoxLayout()
+        self.search_button = QPushButton(tr("Search again"))
+        window.iconize(self.search_button, "refresh")
+        self.search_button.clicked.connect(self.search)
+        self.send_button = QPushButton(tr("Send"))
+        self.send_button.setObjectName("primary")
+        window.iconize(self.send_button, "phone", color="#ffffff")
+        self.send_button.clicked.connect(self.send)
+        buttons.addWidget(self.search_button)
+        buttons.addStretch()
+        buttons.addWidget(self.send_button)
+        box.addLayout(buttons)
+        columns.addWidget(left, 3)
+
+        right = QFrame()
+        right.setObjectName("section")
+        box = QVBoxLayout(right)
+        box.setContentsMargins(16, 14, 16, 14)
+        title = QLabel(tr("No LocalSend? Scan this"))
+        title.setObjectName("sectionTitle")
+        box.addWidget(title)
+        self.qr = QLabel()
+        self.qr.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.qr.setMinimumSize(220, 220)
+        box.addWidget(self.qr, 0, Qt.AlignmentFlag.AlignHCenter)
+        self.url = QLabel()
+        self.url.setObjectName("hint")
+        self.url.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.url.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.url.setWordWrap(True)
+        box.addWidget(self.url)
+        hint = QLabel(tr("Point the phone camera at the code. A page opens where you can download the scan "
+                         "and send photos to this computer."))
+        hint.setObjectName("hint")
+        hint.setWordWrap(True)
+        box.addWidget(hint)
+        box.addStretch()
+        columns.addWidget(right, 2)
+        outer.addLayout(columns, 1)
+
+        footer = QHBoxLayout()
+        self.receive_label = QLabel()
+        self.receive_label.setObjectName("hint")
+        self.receive_label.setWordWrap(True)
+        footer.addWidget(self.receive_label, 1)
+        get_app = QPushButton(tr("Get LocalSend"))
+        get_app.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(LOCALSEND_URL)))
+        close = QPushButton(tr("Close"))
+        close.clicked.connect(self.close)
+        footer.addWidget(get_app)
+        footer.addWidget(close)
+        outer.addLayout(footer)
+
+    def present(self, files):
+        self.files = [path for path in files if path.exists()]
+        self.refresh_files()
+        url = self.main.phone_link.web_url() if self.main.phone_link else ""
+        pixmap = qr_pixmap(url) if url else None
+        if pixmap is not None:
+            self.qr.setPixmap(pixmap)
+            self.qr.setFixedSize(pixmap.size())
+        else:
+            self.qr.setText(tr("QR code not available.") if not url else url)
+        self.url.setText(url)
+        self.devices.clear()
+        for device in self.main.phone_devices.values():
+            self.add_device(device)
+        self.show()
+        self.raise_()
+        self.activateWindow()
+        self.search()
+
+    def refresh_files(self):
+        if self.files:
+            names = ", ".join(path.name for path in self.files[:4]) + (" …" if len(self.files) > 4 else "")
+            size = readable_size(sum(path.stat().st_size for path in self.files if path.exists()))
+            self.what_label.setText(tr("To send: {names}  ({size})", names=names, size=size))
+        else:
+            self.what_label.setText(tr("Nothing to send yet. Scan first, or choose files."))
+        if self.main.phone_link:
+            self.main.phone_link.shared = list(self.files)
+        self.update_buttons()
+
+    def choose_files(self):
+        start = str(self.files[0].parent if self.files else self.main.output_folder())
+        names, _ = QFileDialog.getOpenFileNames(self, tr("Choose files for the phone"), start)
+        if names:
+            self.files = [Path(name) for name in names]
+            self.refresh_files()
+
+    def add_device(self, device):
+        for row in range(self.devices.count()):
+            item = self.devices.item(row)
+            if item.data(Qt.ItemDataRole.UserRole)["fingerprint"] == device["fingerprint"]:
+                break
+        else:
+            item = QListWidgetItem()
+            self.devices.addItem(item)
+        model = device.get("deviceModel") or device.get("deviceType") or ""
+        item.setText(device["alias"] + "\n" + "  ·  ".join(part for part in (model, device["ip"]) if part))
+        item.setIcon(icon("phone", "accent_text"))
+        item.setData(Qt.ItemDataRole.UserRole, device)
+        if self.devices.currentRow() < 0:
+            self.devices.setCurrentRow(0)
+        self.empty_hint.hide()
+        self.update_buttons()
+
+    def search(self):
+        link = self.main.phone_link
+        if not link:
+            return
+        self.empty_hint.setText(tr("Looking for phones… Open LocalSend on the phone."))
+        self.empty_hint.setVisible(self.devices.count() == 0)
+        link.announce()
+        self.main.background(link.scan_network, lambda ok, _: self.search_finished())
+
+    def search_finished(self):
+        if self.devices.count() == 0:
+            self.empty_hint.setText(tr("No phone found.\n1. Is the phone on the same Wi-Fi?\n"
+                                       "2. Open the LocalSend app on the phone (free, Play Store / App Store).\n"
+                                       "3. Or simply scan the QR code on the right."))
+            self.empty_hint.show()
+
+    def update_buttons(self):
+        self.send_button.setEnabled(bool(self.files) and self.devices.currentItem() is not None
+                                    and not self.sending)
+        self.search_button.setEnabled(not self.sending)
+
+    def send(self):
+        item = self.devices.currentItem()
+        if not item or not self.files or self.sending:
+            return
+        device = item.data(Qt.ItemDataRole.UserRole)
+        link = self.main.phone_link
+        self.sending, self.cancel_send = True, False
+        self.bar.setValue(0)
+        self.bar.show()
+        self.send_status.setText(tr("Waiting for {phone} to accept… Tap Accept on the phone.",
+                                    phone=device["alias"]))
+        self.update_buttons()
+        bridge, files = self.main.phone_bridge, list(self.files)
+
+        def work():
+            try:
+                link.send(device, files, lambda value, step: bridge.send_progress.emit(value, step),
+                          lambda: self.cancel_send)
+                bridge.send_done.emit("")
+            except PhoneError as exc:
+                bridge.send_done.emit(str(exc))
+            except Exception as exc:
+                bridge.send_done.emit(f"error: {exc}")
+
+        self.target_name = device["alias"]
+        threading.Thread(target=work, daemon=True).start()
+
+    def progress(self, value, step):
+        if step == "send":
+            self.bar.setValue(value)
+            self.send_status.setText(tr("Sending to {phone}… {value}%", phone=self.target_name, value=value))
+
+    def finished_sending(self, problem):
+        self.sending = False
+        self.bar.hide()
+        messages = {
+            "declined": tr("{phone} declined the files.", phone=self.target_name),
+            "busy": tr("{phone} is busy with another transfer. Try again in a moment.", phone=self.target_name),
+            "pin": tr("{phone} asks for a PIN. Turn off the PIN in LocalSend settings on the phone.",
+                      phone=self.target_name),
+            "unreachable": tr("Could not reach {phone}. Is LocalSend open and on the same Wi-Fi?",
+                              phone=self.target_name),
+            "cancelled": tr("Sending cancelled."),
+        }
+        if not problem:
+            self.send_status.setText(tr("✓ Sent {count} file(s) to {phone}.", count=len(self.files),
+                                        phone=self.target_name))
+            self.main.set_status(tr("✓ Sent {count} file(s) to {phone}.", count=len(self.files),
+                                      phone=self.target_name), "ok")
+        else:
+            self.send_status.setText("⚠ " + messages.get(problem, tr("Sending failed. {error}", error=problem)))
+        self.update_buttons()
+
+    def closeEvent(self, event):
+        self.cancel_send = True
+        super().closeEvent(event)
+
+
 class Scanner(QWidget):
     def __init__(self):
         super().__init__()
@@ -2404,6 +3464,18 @@ class Scanner(QWidget):
         self.update_info = None
         self.text_dialog = None
         self.icon_widgets = []
+        self.phone_link = None
+        self.phone_devices = {}
+        self.phone_dialog = None
+        self.phone_until = 0.0
+        self.phone_bridge = PhoneBridge(self)
+        self.phone_bridge.device.connect(self.phone_device_found)
+        self.phone_bridge.asked.connect(self.phone_ask)
+        self.phone_bridge.received.connect(self.phone_received)
+        self.phone_bridge.send_progress.connect(lambda value, step: self.phone_dialog and
+                                                self.phone_dialog.progress(value, step))
+        self.phone_bridge.send_done.connect(lambda problem: self.phone_dialog and
+                                            self.phone_dialog.finished_sending(problem))
         self.build_settings_dialog()
         self.build_ui()
         clean_old_previews()
@@ -2412,6 +3484,11 @@ class Scanner(QWidget):
         self.led_timer.setInterval(1000)
         self.led_timer.timeout.connect(self.update_led)
         self.led_timer.start()
+        self.phone_timer = QTimer(self)
+        self.phone_timer.setInterval(1000)
+        self.phone_timer.timeout.connect(self.phone_tick)
+        if self.settings.value("phone_always", False, type=bool):
+            QTimer.singleShot(1500, lambda: self.start_phone(always=True))
 
         for keys, slot in (("F5", self.discover), ("Ctrl+S", self.start_scan), ("Ctrl+P", self.start_preview),
                            ("Ctrl+T", self.show_text), ("Ctrl+,", self.open_settings),
@@ -2671,6 +3748,9 @@ class Scanner(QWidget):
         actions.addWidget(self.scan_button, 2)
         self.preview = self.tool_button("eye", tr("Preview"), tr("Quick low-resolution look at the flatbed (Ctrl+P)"),
                                         self.start_preview)
+        self.phone_button = self.tool_button("phone", tr("Phone"),
+                                             tr("Send to your phone or receive photos from it, on the same Wi-Fi "
+                                                "(LocalSend app or QR code)"), self.open_phone)
         self.text_button = self.tool_button("translate", tr("Text"),
                                             tr("Recognised text and translation of the last scan (Ctrl+T)"),
                                             self.show_text)
@@ -2681,7 +3761,7 @@ class Scanner(QWidget):
         self.cancel = self.tool_button("cancel", tr("Cancel"), tr("Stop the scan or search (Esc)"),
                                        self.cancel_scan, "error_fg")
         self.cancel.setObjectName("cancelTile")
-        for button in (self.preview, self.text_button, self.open_last_button, self.open_folder, self.cancel):
+        for button in (self.preview, self.phone_button, self.text_button, self.open_last_button, self.open_folder, self.cancel):
             actions.addWidget(button, 1)
         layout.addWidget(bar)
         self.progress = QProgressBar()
@@ -3029,7 +4109,43 @@ class Scanner(QWidget):
         form.addRow("", note)
         box.addStretch()
 
-        # 4 · General
+        # 4 · Phone
+        nav_item("phone", tr("Phone"))
+        page, box = self.settings_page(tr("Phone"), tr(
+            "Send scans to your phone and receive photos from it, on the same Wi-Fi."))
+        form = self.section(box, tr("Receiving from the phone"))
+        self.phone_always = self.check(form, "Keep receiving on while the app is open", "phone_always",
+                                       False)
+        self.phone_always.toggled.connect(self.phone_always_changed)
+        note = QLabel(tr("When this is off, receiving opens for {minutes} minutes each time you press Phone.",
+                         minutes=PHONE_OPEN_MINUTES))
+        note.setObjectName("hint")
+        note.setWordWrap(True)
+        form.addRow("", note)
+        self.phone_photos = self.choice(form, "Phone photos", [
+            ("Just save them in the scans folder", "save"),
+            ("Make a PDF, like a scan (OCR, Word)", "scan"),
+        ], "phone_photos")
+        self.phone_photos.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.phone_photos.setMinimumContentsLength(24)
+        self.phone_name = QLineEdit(self.settings.value("phone_name", "") or self.phone_alias())
+        self.phone_name.textChanged.connect(self.phone_name_changed)
+        form.addRow(tr("Name on the phone"), self.phone_name)
+        form = self.section(box, tr("How it works"))
+        steps = QLabel(tr("1. Phone and computer on the same Wi-Fi.\n"
+                          "2. Install the free LocalSend app on the phone, or simply scan the QR code.\n"
+                          "3. Press Phone, next to Preview, choose the phone and Send.\n"
+                          "4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.",
+                          name=self.phone_name.text()))
+        steps.setWordWrap(True)
+        form.addRow("", steps)
+        get_app = QPushButton(tr("Get LocalSend"))
+        self.iconize(get_app, "phone")
+        get_app.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(LOCALSEND_URL)))
+        form.addRow("", self.left(get_app))
+        box.addStretch()
+
+        # 5 · General
         nav_item("gear", tr("General"))
         page, box = self.settings_page(tr("General"), tr("Language, appearance and updates."))
         form = self.section(box, tr("Appearance"))
@@ -3206,6 +4322,8 @@ class Scanner(QWidget):
         return (data[0] if data else ""), (network[0] if network else "")
 
     def led_state(self):
+        if self.scanning() and self.job and self.job.get("phone"):
+            return "idle", tr("Idle · making a PDF from phone photos"), ""
         if self.scanning():
             return "busy", tr("In use · scanning on this PC"), ""
         name, ip = self.current_scanner()
@@ -3887,6 +5005,12 @@ class Scanner(QWidget):
             parts.append(tr("text"))
         self.set_status(tr("✓ Saved {files} in {folder}", files=" + ".join(parts), folder=outputs[0].parent.name),
                         "ok")
+        if job.get("phone"):
+            for photo in job["phone"]:
+                if photo not in outputs:
+                    Path(photo).unlink(missing_ok=True)
+            self.set_status(tr("✓ Made {file} from {count} phone photo(s)", file=outputs[0].name,
+                               count=len(job["phone"])), "ok")
         if self.open_after.isChecked():
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(outputs[0])))
         target = self.auto_translate.currentData()
@@ -4085,6 +5209,158 @@ class Scanner(QWidget):
         folder.mkdir(parents=True, exist_ok=True)
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
 
+    # ---------- phone (LocalSend + QR page) ----------
+    @staticmethod
+    def phone_alias():
+        return f"What the Scan · {socket.gethostname().split('.')[0]}"
+
+    def phone_name_changed(self, text):
+        self.settings.setValue("phone_name", text.strip())
+        if self.phone_link:
+            self.phone_link.alias = text.strip() or self.phone_alias()
+
+    def start_phone(self, always=False):
+        """Start receiving: always (Settings) or for a few minutes after pressing Phone."""
+        if WINDOWS and not self.settings.value("phone_firewall_told", False, type=bool):
+            self.settings.setValue("phone_firewall_told", True)
+            QMessageBox.information(self, tr("Phone"), tr(
+                "Windows may now ask whether {app} can use the network.\n\n"
+                "Tick “Private networks” and click Allow, so your phone can reach this computer.", app=APP_NAME))
+        if self.phone_link is None:
+            self.phone_link = PhoneLink(self.phone_name.text().strip() or self.phone_alias(),
+                                        QT_CACHE.parent, self.phone_bridge)
+        self.phone_link.save_folder = self.output_folder()
+        if not self.phone_link.start():
+            self.set_status(tr("The phone connection could not start. Another program may be using the network "
+                               "ports {ports}.", ports=f"{LOCALSEND_PORT}, {PHONE_WEB_PORT}"), "error")
+            return False
+        if not always:
+            self.phone_until = max(self.phone_until, time.monotonic() + PHONE_OPEN_MINUTES * 60)
+        self.phone_timer.start()
+        return True
+
+    def phone_always_changed(self, on):
+        if on:
+            self.start_phone(always=True)
+        else:
+            self.phone_until = time.monotonic() + PHONE_OPEN_MINUTES * 60 if self.phone_link else 0
+
+    def phone_tick(self):
+        if not self.phone_link or not self.phone_link.running:
+            self.phone_timer.stop()
+            return
+        always = self.phone_always.isChecked()
+        left = int(self.phone_until - time.monotonic())
+        if not always and left <= 0:
+            if self.phone_dialog and self.phone_dialog.isVisible() or self.phone_link.session:
+                self.phone_until = time.monotonic() + 60
+                left = 60
+            else:
+                self.phone_link.stop()
+                self.phone_timer.stop()
+                if self.phone_dialog:
+                    self.phone_dialog.receive_label.setText(tr("Receiving is off. Press Phone to open it again."))
+                return
+        if self.phone_dialog:
+            name = self.phone_link.alias
+            if always:
+                text = tr("Receiving is on: the phone can send files to “{name}”.", name=name)
+            else:
+                text = tr("Receiving is on for {time}: the phone can send files to “{name}”.",
+                          time=f"{left // 60}:{left % 60:02d}", name=name)
+            self.phone_dialog.receive_label.setText(text)
+
+    def open_phone(self):
+        if not self.start_phone():
+            return
+        if self.phone_dialog is None:
+            self.phone_dialog = PhoneDialog(self)
+        files = [path for path in self.last_outputs if path.exists()]
+        self.phone_tick()
+        self.phone_dialog.present(files)
+
+    def phone_device_found(self, device):
+        self.phone_devices[device["fingerprint"]] = device
+        if self.phone_dialog and self.phone_dialog.isVisible():
+            self.phone_dialog.add_device(device)
+
+    def phone_ask(self, request):
+        files = request["files"]
+        names = "\n".join(f"• {name}  ({readable_size(size)})" for name, size in files[:8])
+        if len(files) > 8:
+            names += "\n" + tr("… and {count} more", count=len(files) - 8)
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setWindowTitle(tr("Files from a phone"))
+        box.setText(tr("“{sender}” wants to send {count} file(s):", sender=request["sender"], count=len(files)))
+        box.setInformativeText(names + "\n\n" + tr("They will be saved in {folder}.",
+                                                     folder=self.output_folder()))
+        accept = box.addButton(tr("Accept"), QMessageBox.ButtonRole.AcceptRole)
+        box.addButton(tr("Decline"), QMessageBox.ButtonRole.RejectRole)
+        box.setDefaultButton(accept)
+        QTimer.singleShot(PHONE_ASK_SECONDS * 1000, box.reject)
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+        QApplication.alert(self)
+        if self.phone_link:
+            self.phone_link.save_folder = self.output_folder()
+        box.exec()
+        request["ok"] = box.clickedButton() is accept
+        request["event"].set()
+        if request["ok"]:
+            self.set_status(tr("Receiving files from {sender}…", sender=request["sender"]), "busy")
+
+    def phone_received(self, paths, sender):
+        paths = [Path(path) for path in paths if Path(path).exists()]
+        if not paths:
+            return
+        self.last_outputs = paths
+        self.last_text = ""
+        photos = [path for path in paths if path.suffix.lower() in PHONE_IMAGES]
+        self.set_status(tr("✓ Received {count} file(s) from {sender} in {folder}", count=len(paths),
+                           sender=sender, folder=paths[0].parent.name), "ok")
+        self.update_controls()
+        if photos and self.phone_photos.currentData() == "scan":
+            if self.busy():
+                self.set_status(f"{self.status_text()}\n" + tr(
+                    "The photos were saved as they are, because a scan is running."), "ok")
+            else:
+                self.photos_to_pdf(photos)
+
+    def photos_to_pdf(self, photos):
+        """Phone photos → PDF through NAPS2 (same OCR / Word / JPG settings as a scan)."""
+        folder = photos[0].parent
+        base = folder / datetime.now().strftime("Phone-%Y%m%d-%H%M%S")
+        doc = self.doc_format()
+        ocr = self.ocr_languages() if self.ocr_on.isChecked() or doc else []
+        self.job = {"kind": "both" if self.save_format() == "both" else "pdf", "base": base, "replace": False,
+                    "auto": False, "source": "glass", "ocr": ocr, "doc": doc, "phone": photos}
+        backend = get_backend()
+        if not backend:
+            self.job = None
+            return
+
+        def run():
+            job = self.job
+            if not job:
+                return
+            self.pending = folder / f".scan-{uuid4().hex}.pdf"
+            args = ["-o", str(self.pending), "-i", ";".join(str(photo) for photo in photos), "-n", "0",
+                    "--noprofile"]
+            args += ["--ocrlang", "+".join(job["ocr"])] if job["ocr"] else ["--disableocr"]
+            self.job_device = None
+            self.cancelled = False
+            message = tr("Making a PDF from {count} phone photo(s)…", count=len(photos))
+            if job["ocr"]:
+                message += tr(" Recognising text (OCR)…")
+            self.set_status(message, "busy")
+            self.process.start(backend[0], backend[1:] + args)
+            self.update_controls()
+            self.update_led()
+
+        self.ensure_ocr(ocr, run)
+
     def closeEvent(self, event):
         if self.scanning():
             answer = QMessageBox.question(self, tr("Scan in progress"),
@@ -4102,6 +5378,10 @@ class Scanner(QWidget):
             process.waitForFinished(1000)
         self.discoveries.clear()
         self.presence.stop()
+        if self.phone_link:
+            self.phone_link.stop()
+        if self.phone_dialog:
+            self.phone_dialog.close()
         self.settings_dialog.close()
         if self.text_dialog:
             self.text_dialog.close()
