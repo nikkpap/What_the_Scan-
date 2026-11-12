@@ -1893,6 +1893,12 @@ def apply_theme(mode):
 UI_LANG = "en"
 
 GR = {
+    "{name} answers on the network ({ip}), but its scanner driver is not installed.":
+        "Το {name} απαντά στο δίκτυο ({ip}), αλλά ο driver του σαρωτή δεν είναι εγκατεστημένος.",
+    "Scanner driver missing":
+        "Λείπει ο driver του σαρωτή",
+    "{name} was found on the network ({ip}), but its scanner driver is not installed, so the app cannot scan with it.\n\nInstall the official {label} now? It is downloaded and installed automatically (a few minutes; Windows may ask for permission).":
+        "Βρέθηκε το {name} στο δίκτυο ({ip}), αλλά ο driver του σαρωτή δεν είναι εγκατεστημένος, οπότε η εφαρμογή δεν μπορεί να σαρώσει.\n\nΝα εγκατασταθεί τώρα ο επίσημος {label}; Κατεβαίνει και εγκαθίσταται αυτόματα (λίγα λεπτά· τα Windows μπορεί να ζητήσουν άδεια).",
     "Phone":
         "Κινητό",
     "Send to your phone or receive photos from it, on the same Wi-Fi (LocalSend app or QR code)":
@@ -4488,6 +4494,7 @@ class Scanner(QWidget):
                     selection = index
             self.network.setCurrentIndex(0 if len(devices) == 1 else selection)
             self.network.blockSignals(False)
+            QTimer.singleShot(0, self.offer_missing_driver)
             if self.network.currentIndex() >= 0:
                 self.remember_network()
             else:
@@ -4714,6 +4721,44 @@ class Scanner(QWidget):
         self.update_connection()
         self.update_controls()
         self.update_led()
+        QTimer.singleShot(0, self.offer_missing_driver)
+
+    def missing_driver(self):
+        """A scanner answers on the network, but no driver sees it: which official driver is missing?"""
+        windir = Path(os.environ.get("WINDIR", r"C:\Windows"))
+        for index in range(self.network.count()):
+            ip, _mac, _reachable, brand, name = self.network.itemData(index)
+            text = normalize(f"{brand} {name}").replace("pixma", "")
+            for model, package in DRIVER_PACKAGES.items():
+                keys = (normalize(model).replace("pixma", ""), *MODEL_ALIASES.get(model, ()))
+                if not any(key in text for key in keys):
+                    continue
+                check = package.get("check")
+                if check and windir.joinpath(*check).is_file():
+                    continue  # installed: the problem is elsewhere (power, Wi-Fi)
+                label = name if normalize(brand) in normalize(name) else f"{brand} {name}".strip()
+                return package, ("Canon" if "canon" in text or "ts3" in text else "Epson"), model, label, ip
+        return None
+
+    def offer_missing_driver(self):
+        """Driver removed or never installed: offer the official one in a single click (Windows)."""
+        if (not WINDOWS or self.device.count() or not self.searched_once or self.discoveries
+                or getattr(self, "driver_offered", False) or getattr(self, "model_install_running", False)):
+            return
+        found = self.missing_driver()
+        if not found:
+            return
+        package, brand, model, name, ip = found
+        self.driver_offered = True
+        self.set_status(tr("{name} answers on the network ({ip}), but its scanner driver is not installed.",
+                           name=name, ip=ip), "error")
+        answer = QMessageBox.question(self, tr("Scanner driver missing"), tr(
+            "{name} was found on the network ({ip}), but its scanner driver is not installed, "
+            "so the app cannot scan with it.\n\n"
+            "Install the official {label} now? It is downloaded and installed automatically "
+            "(a few minutes; Windows may ask for permission).", name=name, ip=ip, label=package["label"]))
+        if answer == QMessageBox.StandardButton.Yes:
+            self.install_driver(package, brand, model)
 
     # ---------- scanning ----------
     def run_job(self, args, message):
