@@ -1897,6 +1897,16 @@ def apply_theme(mode):
 UI_LANG = "en"
 
 GR = {
+    "So that your phone can send to this computer, Windows Firewall must let it in.\n\nAllow it now? Windows asks for permission once (only phones on your own network, only the ports of {app}).":
+        "Για να μπορεί το κινητό να στέλνει σε αυτόν τον υπολογιστή, πρέπει να το επιτρέψει το Τείχος προστασίας των Windows.\n\nΝα επιτραπεί τώρα; Τα Windows ζητούν άδεια μία φορά (μόνο για κινητά του δικού σου δικτύου, μόνο στις θύρες του {app}).",
+    "Waiting for Windows permission (firewall)…":
+        "Περιμένω την άδεια των Windows (τείχος προστασίας)…",
+    "✓ Windows Firewall lets your phone in now.":
+        "✓ Το Τείχος προστασίας των Windows αφήνει πλέον το κινητό να συνδεθεί.",
+    "Windows Firewall was not changed, so the phone may not be able to send to this computer.":
+        "Το Τείχος προστασίας των Windows δεν άλλαξε, οπότε το κινητό ίσως δεν μπορεί να στείλει σε αυτόν τον υπολογιστή.",
+    "LocalSend for the phone":
+        "LocalSend για το κινητό",
     "Trying Epson's other download server…":
         "Δοκιμή από τον άλλο server λήψεων της Epson…",
     "{name} answers on the network ({ip}), but its scanner driver is not installed.":
@@ -2518,7 +2528,7 @@ PHONE_WEB_PORT = 53320
 PHONE_OPEN_MINUTES = 5
 PHONE_ASK_SECONDS = 75
 PHONE_IMAGES = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
-LOCALSEND_URL = "https://localsend.org"
+LOCALSEND_URL = "https://localsend.org/download"
 PHONE_MIME = {
     ".pdf": "application/pdf", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
     ".txt": "text/plain", ".odt": "application/vnd.oasis.opendocument.text",
@@ -2634,9 +2644,19 @@ class PhoneLink:
         self.save_folder = Path.home()
         self.shared = []
         self.multicast = None
-        self.opener = urllib.request.build_opener(  # LAN only: never through a system proxy
-            urllib.request.ProxyHandler({}),
-            urllib.request.HTTPSHandler(context=ssl._create_unverified_context()))
+        self.last_error = ""
+        self.opener = self._opener(None)
+
+    @staticmethod
+    def _opener(certificate):
+        """LAN only, never through a system proxy. Phones use self-signed certificates, so they are not
+        verified; our own certificate is presented as the client certificate, because LocalSend 1.18+
+        receivers with encryption on ask for one (mutual TLS) and drop the connection without it."""
+        context = ssl._create_unverified_context()
+        if certificate:
+            context.load_cert_chain(str(certificate[0]), str(certificate[1]))
+        return urllib.request.build_opener(urllib.request.ProxyHandler({}),
+                                           urllib.request.HTTPSHandler(context=context))
 
     # ----- identity
     def info(self):
@@ -2673,6 +2693,7 @@ class PhoneLink:
         if server is not None:
             self.port = server.server_address[1]
             if certificate:
+                self.opener = self._opener(certificate)
                 context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
                 context.load_cert_chain(str(certificate[0]), str(certificate[1]))
                 server.socket = context.wrap_socket(server.socket, server_side=True, do_handshake_on_connect=False)
@@ -2833,6 +2854,8 @@ class PhoneLink:
             status, body = self.request(device, "prepare-upload", {"info": self.info(), "files": files},
                                         timeout=PHONE_ASK_SECONDS + 30)
         except (OSError, ValueError) as exc:
+            reason = getattr(exc, "reason", None) or exc
+            self.last_error = f"{type(reason).__name__}: {reason}"[:160]
             raise PhoneError("unreachable") from exc
         if status == 204:
             return
@@ -2901,7 +2924,7 @@ class PhoneLink:
             self.session = session
         return 200, {"sessionId": session["id"], "files": {k: v["token"] for k, v in entries.items()}}
 
-    def store(self, session_id, file_id, token, source, length):
+    def store(self, session_id, file_id, token, source, length, chunked=False):
         with self.lock:
             session = self.session
         if not session or session["id"] != session_id:
@@ -2909,12 +2932,28 @@ class PhoneLink:
         entry = session["files"].get(str(file_id))
         if not entry or not secrets.compare_digest(entry["token"], str(token or "")) or entry["done"]:
             return 403
-        if length < 0:
+        if length < 0 and not chunked:
             return 411
         part = entry["target"].with_name(entry["target"].name + ".part")
         remaining = length
         try:
             with part.open("wb") as out:
+                if chunked:  # Transfer-Encoding: chunked (no Content-Length)
+                    remaining = 0
+                    while True:
+                        size = int(source.readline(100).split(b";")[0].strip() or b"0", 16)
+                        if size == 0:
+                            while source.readline(1000).strip():
+                                pass  # trailer lines
+                            break
+                        while size > 0:
+                            chunk = source.read(min(size, 256 * 1024))
+                            if not chunk:
+                                raise OSError("incomplete")
+                            out.write(chunk)
+                            size -= len(chunk)
+                            session["touched"] = time.monotonic()
+                        source.readline(10)
                 while remaining > 0:
                     chunk = source.read(min(remaining, 256 * 1024))
                     if not chunk:
@@ -3009,7 +3048,8 @@ def _localsend_handler(link):
                     self.reply(*link.prepare(data.get("info"), data.get("files"), self.client_address[0]))
                 elif path == "/api/localsend/v2/upload":
                     self.reply(link.store(query.get("sessionId"), query.get("fileId"), query.get("token"),
-                                          self.rfile, int(self.headers.get("Content-Length") or -1)))
+                                          self.rfile, int(self.headers.get("Content-Length") or -1),
+                                          "chunked" in self.headers.get("Transfer-Encoding", "").lower()))
                 elif path == "/api/localsend/v2/cancel":
                     link.cancel(query.get("sessionId"))
                     self.reply(200)
@@ -3069,7 +3109,8 @@ def _web_handler(link):
                                              self.client_address[0]))
                 elif path == "/upload":
                     self.reply(link.store(query.get("s"), query.get("f"), query.get("k"), self.rfile,
-                                          int(self.headers.get("Content-Length") or -1)))
+                                          int(self.headers.get("Content-Length") or -1),
+                                          "chunked" in self.headers.get("Transfer-Encoding", "").lower()))
                 elif path == "/cancel":
                     link.cancel(query.get("s"))
                     self.reply(200)
@@ -3289,7 +3330,7 @@ class PhoneDialog(QDialog):
         self.receive_label.setObjectName("hint")
         self.receive_label.setWordWrap(True)
         footer.addWidget(self.receive_label, 1)
-        get_app = QPushButton(tr("Get LocalSend"))
+        get_app = QPushButton(tr("LocalSend for the phone"))
         get_app.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(LOCALSEND_URL)))
         close = QPushButton(tr("Close"))
         close.clicked.connect(self.close)
@@ -3413,7 +3454,8 @@ class PhoneDialog(QDialog):
             "pin": tr("{phone} asks for a PIN. Turn off the PIN in LocalSend settings on the phone.",
                       phone=self.target_name),
             "unreachable": tr("Could not reach {phone}. Is LocalSend open and on the same Wi-Fi?",
-                              phone=self.target_name),
+                              phone=self.target_name) + (f"\n({self.main.phone_link.last_error})"
+                                                         if self.main.phone_link.last_error else ""),
             "cancelled": tr("Sending cancelled."),
         }
         if not problem:
@@ -4151,7 +4193,7 @@ class Scanner(QWidget):
                           name=self.phone_name.text()))
         steps.setWordWrap(True)
         form.addRow("", steps)
-        get_app = QPushButton(tr("Get LocalSend"))
+        get_app = QPushButton(tr("LocalSend for the phone"))
         self.iconize(get_app, "phone")
         get_app.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(LOCALSEND_URL)))
         form.addRow("", self.left(get_app))
@@ -5281,11 +5323,8 @@ class Scanner(QWidget):
 
     def start_phone(self, always=False):
         """Start receiving: always (Settings) or for a few minutes after pressing Phone."""
-        if WINDOWS and not self.settings.value("phone_firewall_told", False, type=bool):
-            self.settings.setValue("phone_firewall_told", True)
-            QMessageBox.information(self, tr("Phone"), tr(
-                "Windows may now ask whether {app} can use the network.\n\n"
-                "Tick “Private networks” and click Allow, so your phone can reach this computer.", app=APP_NAME))
+        if WINDOWS and not self.settings.value("phone_firewall_ok", False, type=bool):
+            self.open_windows_firewall()
         if self.phone_link is None:
             self.phone_link = PhoneLink(self.phone_name.text().strip() or self.phone_alias(),
                                         QT_CACHE.parent, self.phone_bridge)
@@ -5298,6 +5337,51 @@ class Scanner(QWidget):
             self.phone_until = max(self.phone_until, time.monotonic() + PHONE_OPEN_MINUTES * 60)
         self.phone_timer.start()
         return True
+
+    def open_windows_firewall(self):
+        """Phones must reach this PC: allow the phone ports from the local network only, once.
+        Also removes "block" rules Windows made for this program if its question was ever dismissed."""
+        name = "What the Scan (phone)"
+        try:
+            exists = run_hidden(["netsh", "advfirewall", "firewall", "show", "rule", f"name={name}"],
+                                capture_output=True, timeout=15).returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            return
+        if exists:
+            self.settings.setValue("phone_firewall_ok", True)
+            return
+        answer = QMessageBox.question(self, tr("Phone"), tr(
+            "So that your phone can send to this computer, Windows Firewall must let it in.\n\n"
+            "Allow it now? Windows asks for permission once (only phones on your own network, "
+            "only the ports of {app}).", app=APP_NAME))
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        program = sys.executable
+        commands = [
+            f'netsh advfirewall firewall delete rule name=all dir=in program="{program}"',
+            f'netsh advfirewall firewall add rule name="{name}" dir=in action=allow protocol=TCP '
+            f'localport={LOCALSEND_PORT}-{PHONE_WEB_PORT + 10} remoteip=localsubnet profile=any',
+            f'netsh advfirewall firewall add rule name="{name}" dir=in action=allow protocol=UDP '
+            f'localport={LOCALSEND_PORT} remoteip=localsubnet profile=any',
+        ]
+        script = " & ".join(commands)
+        env = dict(os.environ, WTS_FIREWALL=script)
+        env.pop("PSModulePath", None)
+        self.set_status(tr("Waiting for Windows permission (firewall)…"), "busy")
+        QApplication.processEvents()
+        try:
+            run_hidden(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+                        "$p=Start-Process -FilePath cmd.exe -ArgumentList ('/c ' + $env:WTS_FIREWALL) "
+                        "-Verb RunAs -WindowStyle Hidden -Wait -PassThru; exit $p.ExitCode"],
+                       env=env, capture_output=True, timeout=120)
+            ok = run_hidden(["netsh", "advfirewall", "firewall", "show", "rule", f"name={name}"],
+                            capture_output=True, timeout=15).returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            ok = False
+        self.settings.setValue("phone_firewall_ok", ok)
+        self.set_status(tr("✓ Windows Firewall lets your phone in now.") if ok else
+                        tr("Windows Firewall was not changed, so the phone may not be able to send to this computer."),
+                        "ok" if ok else "error")
 
     def phone_always_changed(self, on):
         if on:
