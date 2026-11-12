@@ -33,6 +33,60 @@ and a status light that shows when someone else on the network is using the scan
   - **Brother** all-in-ones and ADS scanners from 2024 (MFC-L2820DW, DCP-L3560CDW, MFC-J4355DW, MFC-J6960DW, ADS-1800W…): they scan over the network with no driver (AirPrint / eSCL), or with Brother's driver package; Driver setup opens Brother's download page with the model copied.
 - **Over-the-air updates** from this repository's GitHub releases (SHA-256 checked).
 
+## Supported scanner models
+
+What the Scan works with **any scanner that NAPS2 can reach** (TWAIN, WIA, eSCL / AirPrint, SANE, Apple ICA). The models below are known to the app: it recognises them, picks the right driver page and, where marked, installs the driver in one click.
+
+Η εφαρμογή δουλεύει με **κάθε σαρωτή που βλέπει το NAPS2**. Τα παρακάτω μοντέλα τα αναγνωρίζει η εφαρμογή, ανοίγει τη σωστή σελίδα driver και, όπου σημειώνεται, εγκαθιστά τον driver με ένα κλικ.
+
+### Epson
+
+Driver: Epson Scan 2 (TWAIN / WIA). **L14150: one-click driver install.** See [Epson Scan 2 driver](#epson-scan-2-driver-epson-l14150-and-other-epson-scanners).
+
+| Series | Year | Models |
+|---|---|---|
+| DS / ES / RR | 2024 | DS-800WN, DS-900WN |
+| DS / ES / RR | 2025 | DS-1730, DS-1760WN, DS-530 II TAA, DS-730N TAA, DS-870 TAA |
+| DS / ES / RR | 2026 | DS-530X, DS-785W, ES-550W, ES-590W, RR-620W |
+| EcoTank / L series | earlier | L14150 |
+
+### Canon
+
+Driver: Canon MP Drivers / IJ Scan Utility, or driverless over the network (eSCL). **PIXMA TS3150 (TS3100 series): one-click driver install.**
+
+| Series | Year | Models |
+|---|---|---|
+| PIXMA | earlier | PIXMA TS3150 |
+| PIXMA | 2025 | TS4140i, TS4150i, TS4320, TS6520, TS6540i, TS6550i, TS7550i, TR7120 |
+| MAXIFY | 2025 | GX5150, GX6150, GX7150, GX5170, GX6170, GX7170 |
+| imageCLASS | 2025 | MF460 II |
+| imageFORMULA | 2025 | DR-C340, DR-C350 |
+| imageFORMULA | 2026 | R40II |
+
+### HP
+
+Driverless over the network (AirPrint / eSCL), or the HP Smart / HP Scan driver.
+
+| Series | Year | Models |
+|---|---|---|
+| Smart Tank | — | 520, 525, 580, 585, 720, 750, 790, 5101, 5105, 5106, 6001, 6005, 6006, 7001, 7005, 7006, 7301, 7305, 7306, 7602, 7605 |
+| ScanJet Pro | — | 2000 s2, 2600 f1, 3000 s4, 3600 f1, N4000 snw1, N4600 fnw1 |
+| ScanJet Enterprise Flow | — | 5000 s5, 7000 s3, N6600 fnw1, N7000 snw1, 9000 s1, N9120 fn2 |
+
+### Brother
+
+Driverless over the network (AirPrint / eSCL), or Brother's Full Driver & Software Package (TWAIN / WIA, brscan on Linux).
+
+| Series | Year | Models |
+|---|---|---|
+| MFC / DCP / HL laser | 2024 | MFC-L2800DW, MFC-L2820DW, MFC-L2880DW, MFC-L2900DW, MFC-L2920DW, MFC-L2960DW, MFC-L2980DW, DCP-L2640DW, HL-L2480DW, DCP-L5510DW, MFC-L5710DN, MFC-L5710DW, MFC-L5915DW, MFC-L6710DW, MFC-L6910DN |
+| MFC / DCP colour laser | 2024 | DCP-L3520CDW, DCP-L3560CDW, MFC-L3755CDW, MFC-L3760CDW, MFC-L8390CDW |
+| MFC / DCP inkjet & laser | 2025 | MFC-J4355DW, MFC-J4555DW, MFC-J6760DW, MFC-J6960DW, MFC-L8730CDW, MFC-L8930CDW, MFC-EX575, DCP-J1260W |
+| MFC A3 inkjet | 2026 | MFC-J3660DW, MFC-J3960DW, MFC-J6560DW, MFC-J6975DW |
+| ADS document scanners | — | ADS-1300, ADS-1800W |
+
+**Other brands** (Kyocera, Ricoh, Xerox, Samsung, Lexmark and others): any network scanner that supports eSCL / AirPrint is found and used automatically, with the status light and paper sources it reports.
+
 ## Install
 
 Download from the [latest release](https://github.com/nikkpap/What_the_Scan-/releases/latest):
