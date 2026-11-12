@@ -146,9 +146,13 @@ MODEL_ALIASES = {
 # "check" is a file the driver leaves behind; without one the app asks before installing.
 DRIVER_PACKAGES = {
     "L14150": {
-        "label": "Epson L14150 driver",
-        "url": "https://ftp.epson.com/latin/drivers/inkjet/L14150_EScan2_67700_LA.exe",
-        "signer": "Epson America",
+        "label": "Epson L14150 driver (Epson Scan 2)",
+        # Epson Download Center, Europe (Greece): "Scanner Driver and Epson Scan 2 Utility" 6.7.70.0.
+        "url": "https://download3.ebz.epson.net/dsc/f/03/00/16/20/65/0356115901ee788b1381abd50372549c13943fac/"
+               "EpsonScan2_L14150_67700_41_Signed.exe",
+        # Same driver version from Epson's Latin America server, used if the first one cannot be reached.
+        "mirrors": ("https://ftp.epson.com/latin/drivers/inkjet/L14150_EScan2_67700_LA.exe",),
+        "signer": "Epson",  # Authenticode publisher must be valid and contain "Epson" (Seiko Epson / Epson America)
         "check": ("twain_32", "escndv2", "es020c.ds"),
     },
     "PIXMA TS3150": {
@@ -1893,6 +1897,8 @@ def apply_theme(mode):
 UI_LANG = "en"
 
 GR = {
+    "Trying Epson's other download server…":
+        "Δοκιμή από τον άλλο server λήψεων της Epson…",
     "{name} answers on the network ({ip}), but its scanner driver is not installed.":
         "Το {name} απαντά στο δίκτυο ({ip}), αλλά ο driver του σαρωτή δεν είναι εγκατεστημένος.",
     "Scanner driver missing":
@@ -4442,8 +4448,17 @@ class Scanner(QWidget):
         self.set_status(tr("Preparing the official {label} installer…", label=label), "busy")
 
         def work():
-            install_vendor(package["url"], package["signer"], package.get("flags", []),
-                           lambda message: events.put(message), label, filename=package.get("filename"))
+            urls = (package["url"], *package.get("mirrors", ()))
+            for number, url in enumerate(urls):
+                try:
+                    install_vendor(url, package["signer"], package.get("flags", []),
+                                   lambda message: events.put(message), label,
+                                   filename=package.get("filename") if number == 0 else None)
+                    break
+                except (OSError, ValueError, urllib.error.URLError):
+                    if number == len(urls) - 1:
+                        raise
+                    events.put(tr("Trying Epson's other download server…"))
             if check and not Path(os.environ.get("WINDIR", r"C:\Windows")).joinpath(*check).is_file():
                 raise RuntimeError("The installer finished but did not register the driver.")
 
