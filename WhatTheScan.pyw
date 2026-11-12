@@ -27,11 +27,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from concurrent.futures import ThreadPoolExecutor
 from queue import Empty, Queue
 
-VERSION = "1.0.10"
+VERSION = "1.0.11"
 # Change this one line to rename the app everywhere.
 APP_NAME = "What the Scan?!"
 APP_TAGLINE = "Scanner busy? Now you know who."
-BRANDS = "Epson, Canon & HP"
+BRANDS = "Epson, Canon, HP & Brother"
 WINDOWS = sys.platform == "win32"
 MAC = sys.platform == "darwin"
 LINUX = sys.platform.startswith("linux")
@@ -130,6 +130,17 @@ CATALOG = {
                       "6005", "6006", "7001", "7005", "7006", "7301", "7305", "7306", "7602", "7605"),
     "HP ScanJet Pro": ("2000 s2", "2600 f1", "3000 s4", "3600 f1", "N4000 snw1", "N4600 fnw1"),
     "HP ScanJet Enterprise Flow": ("5000 s5", "7000 s3", "N6600 fnw1", "N7000 snw1", "9000 s1", "N9120 fn2"),
+    # Brother all-in-ones and scanners launched from 2024. They scan over the network with no driver
+    # (AirPrint / eSCL), or with Brother's driver package (TWAIN / WIA, brscan on Linux).
+    "Brother · 2024 · laser": ("MFC-L2800DW", "MFC-L2820DW", "MFC-L2880DW", "MFC-L2900DW", "MFC-L2920DW",
+                               "MFC-L2960DW", "MFC-L2980DW", "DCP-L2640DW", "HL-L2480DW", "DCP-L5510DW",
+                               "MFC-L5710DN", "MFC-L5710DW", "MFC-L5915DW", "MFC-L6710DW", "MFC-L6910DN"),
+    "Brother · 2024 · colour laser": ("DCP-L3520CDW", "DCP-L3560CDW", "MFC-L3755CDW", "MFC-L3760CDW",
+                                      "MFC-L8390CDW"),
+    "Brother · 2025": ("MFC-J4355DW", "MFC-J4555DW", "MFC-J6760DW", "MFC-J6960DW", "MFC-L8730CDW",
+                       "MFC-L8930CDW", "MFC-EX575", "DCP-J1260W"),
+    "Brother · 2026": ("MFC-J3660DW", "MFC-J3960DW", "MFC-J6560DW", "MFC-J6975DW"),
+    "Brother · ADS scanners": ("ADS-1300", "ADS-1800W"),
 }
 # Names the drivers report for a model, when they differ from the model name.
 # Canon drivers call the TS3150 "TS3100 series".
@@ -140,6 +151,8 @@ MODEL_SOURCES = {
     "HP Smart Tank 7001": ("glass",),
     "HP Smart Tank 7005": ("glass",),
     "Canon PIXMA TS3150": ("glass",),
+    "Brother ADS-1300": ("feeder", "duplex"),
+    "Brother ADS-1800W": ("feeder", "duplex"),
 }
 MODEL_ALIASES = {
     "PIXMA TS3150": ("ts3100", "ts3150", "ts3151", "ts3152"),
@@ -211,7 +224,9 @@ OFFLINE INSTALLATION
 
 DRIVERS
   Epson: Epson Scan 2.  Canon: MP Drivers.  HP (incl. Smart Tank): works over the
-  network with no driver (AirPrint / eSCL).  macOS: Image Capture.  Linux: SANE.""",
+  network with no driver (AirPrint / eSCL).  macOS: Image Capture.  Linux: SANE.
+  Brother (2024+ MFC / DCP / ADS): over the network with no driver (AirPrint / eSCL),
+  or with Brother's Full Driver & Software Package (TWAIN / WIA).""",
     'el': """ΠΩΣ ΣΑΡΩΝΩ (3 βήματα)
   1. Άναψε τον σαρωτή και βάλε το χαρτί (στο τζάμι ή στον τροφοδότη).
   2. Έλεγξε ότι η πάνω κάρτα γράφει  ✓ Συνδέθηκε με <σαρωτής σου>.
@@ -256,7 +271,9 @@ DRIVERS
 
 DRIVERS
   Epson: Epson Scan 2.  Canon: MP Drivers.  HP (και Smart Tank): δουλεύει μέσω
-  δικτύου χωρίς driver (AirPrint / eSCL).  macOS: Image Capture.  Linux: SANE.""",
+  δικτύου χωρίς driver (AirPrint / eSCL).  macOS: Image Capture.  Linux: SANE.
+  Brother (MFC / DCP / ADS από 2024): μέσω δικτύου χωρίς driver (AirPrint / eSCL)
+  ή με το Full Driver & Software Package της Brother (TWAIN / WIA).""",
     'fr': """NUMÉRISER (3 étapes)
   1. Allumez le scanner et placez le papier (vitre ou chargeur de documents).
   2. Vérifiez que la carte du haut indique  ✓ Connecté à <votre scanner>.
@@ -301,7 +318,9 @@ INSTALLATION HORS LIGNE
 
 PILOTES
   Epson : Epson Scan 2.  Canon : MP Drivers.  HP (y compris Smart Tank) : en réseau
-  sans pilote (AirPrint / eSCL).  macOS : Transfert d’images.  Linux : SANE.""",
+  sans pilote (AirPrint / eSCL).  macOS : Transfert d’images.  Linux : SANE.
+  Brother (MFC / DCP / ADS depuis 2024) : en réseau sans pilote (AirPrint / eSCL),
+  ou avec le Full Driver & Software Package de Brother (TWAIN / WIA).""",
     'de': """SO SCANNEN SIE (3 Schritte)
   1. Scanner einschalten und Papier einlegen (Glasplatte oder Einzug).
   2. Prüfen Sie, dass oben  ✓ Verbunden mit <Ihr Scanner>  steht.
@@ -346,7 +365,9 @@ OFFLINE-INSTALLATION
 
 TREIBER
   Epson: Epson Scan 2.  Canon: MP Drivers.  HP (auch Smart Tank): im Netzwerk ohne
-  Treiber (AirPrint / eSCL).  macOS: Digitale Bilder.  Linux: SANE.""",
+  Treiber (AirPrint / eSCL).  macOS: Digitale Bilder.  Linux: SANE.
+  Brother (MFC / DCP / ADS ab 2024): im Netzwerk ohne Treiber (AirPrint / eSCL)
+  oder mit Brothers Full Driver & Software Package (TWAIN / WIA).""",
     'it': """COME ACQUISIRE (3 passi)
   1. Accendi lo scanner e inserisci la carta (piano o alimentatore).
   2. Controlla che la scheda in alto dica  ✓ Connesso a <il tuo scanner>.
@@ -391,7 +412,9 @@ INSTALLAZIONE OFFLINE
 
 DRIVER
   Epson: Epson Scan 2.  Canon: MP Drivers.  HP (anche Smart Tank): in rete senza
-  driver (AirPrint / eSCL).  macOS: Acquisizione Immagine.  Linux: SANE.""",
+  driver (AirPrint / eSCL).  macOS: Acquisizione Immagine.  Linux: SANE.
+  Brother (MFC / DCP / ADS dal 2024): in rete senza driver (AirPrint / eSCL)
+  o con il Full Driver & Software Package di Brother (TWAIN / WIA).""",
     'es': """CÓMO ESCANEAR (3 pasos)
   1. Enciende el escáner y coloca el papel (cristal o alimentador).
   2. Comprueba que la tarjeta superior diga  ✓ Conectado a <tu escáner>.
@@ -436,7 +459,9 @@ INSTALACIÓN SIN CONEXIÓN
 
 CONTROLADORES
   Epson: Epson Scan 2.  Canon: MP Drivers.  HP (incl. Smart Tank): en red sin
-  controlador (AirPrint / eSCL).  macOS: Captura de Imagen.  Linux: SANE.""",
+  controlador (AirPrint / eSCL).  macOS: Captura de Imagen.  Linux: SANE.
+  Brother (MFC / DCP / ADS desde 2024): en red sin controlador (AirPrint / eSCL)
+  o con el Full Driver & Software Package de Brother (TWAIN / WIA).""",
     'ro': """CUM SCANAȚI (3 pași)
   1. Porniți scannerul și puneți hârtia (pe geam sau în alimentator).
   2. Verificați că sus scrie  ✓ Conectat la <scannerul dvs.>.
@@ -481,7 +506,9 @@ INSTALARE OFFLINE
 
 DRIVERE
   Epson: Epson Scan 2.  Canon: MP Drivers.  HP (inclusiv Smart Tank): în rețea fără
-  driver (AirPrint / eSCL).  macOS: Captură imagine.  Linux: SANE.""",
+  driver (AirPrint / eSCL).  macOS: Captură imagine.  Linux: SANE.
+  Brother (MFC / DCP / ADS din 2024): în rețea fără driver (AirPrint / eSCL)
+  sau cu Full Driver & Software Package de la Brother (TWAIN / WIA).""",
     'cs': """JAK SKENOVAT (3 kroky)
   1. Zapněte skener a vložte papír (na sklo nebo do podavače).
   2. Zkontrolujte, že horní karta ukazuje  ✓ Připojeno k <váš skener>.
@@ -526,7 +553,9 @@ INSTALACE BEZ INTERNETU
 
 OVLADAČE
   Epson: Epson Scan 2.  Canon: MP Drivers.  HP (i Smart Tank): po síti bez
-  ovladače (AirPrint / eSCL).  macOS: Digitální fotografie.  Linux: SANE.""",
+  ovladače (AirPrint / eSCL).  macOS: Digitální fotografie.  Linux: SANE.
+  Brother (MFC / DCP / ADS od 2024): po síti bez ovladače (AirPrint / eSCL)
+  nebo s balíčkem Full Driver & Software Package od Brother (TWAIN / WIA).""",
     'ru': """КАК СКАНИРОВАТЬ (3 шага)
   1. Включите сканер и положите бумагу (на стекло или в податчик).
   2. Убедитесь, что вверху написано  ✓ Подключено к <ваш сканер>.
@@ -571,7 +600,9 @@ OVLADAČE
 
 ДРАЙВЕРЫ
   Epson: Epson Scan 2.  Canon: MP Drivers.  HP (включая Smart Tank): по сети без
-  драйвера (AirPrint / eSCL).  macOS: Захват изображений.  Linux: SANE.""",
+  драйвера (AirPrint / eSCL).  macOS: Захват изображений.  Linux: SANE.
+  Brother (MFC / DCP / ADS с 2024 г.): по сети без драйвера (AirPrint / eSCL)
+  или с пакетом Brother Full Driver & Software Package (TWAIN / WIA).""",
     'ja': """スキャンの手順（3 ステップ）
   1. スキャナーの電源を入れ、用紙をセットします（原稿台または ADF）。
   2. 上のカードに  ✓ <スキャナー> に接続しました  と表示されていることを確認します。
@@ -616,7 +647,9 @@ OVLADAČE
 
 ドライバー
   Epson: Epson Scan 2。Canon: MP Drivers。HP（Smart Tank を含む）: ドライバーなしで
-  ネットワーク経由 (AirPrint / eSCL)。macOS: イメージキャプチャ。Linux: SANE。""",
+  ネットワーク経由 (AirPrint / eSCL)。macOS: イメージキャプチャ。Linux: SANE。
+  Brother（2024 年以降の MFC / DCP / ADS）: ドライバーなしでネットワーク経由 (AirPrint / eSCL)、
+  または Brother の Full Driver & Software Package (TWAIN / WIA)。""",
     'zh': """如何扫描（3 步）
   1. 打开扫描仪并放好纸张（平板或自动进纸器）。
   2. 确认顶部卡片显示  ✓ 已连接到 <你的扫描仪>。
@@ -661,7 +694,9 @@ OVLADAČE
 
 驱动
   Epson：Epson Scan 2。Canon：MP Drivers。HP（含 Smart Tank）：无需驱动即可通过
-  网络使用 (AirPrint / eSCL)。macOS：图像捕捉。Linux：SANE。""",
+  网络使用 (AirPrint / eSCL)。macOS：图像捕捉。Linux：SANE。
+  Brother（2024 年起的 MFC / DCP / ADS）：无需驱动即可通过网络使用 (AirPrint / eSCL)，
+  或使用 Brother 的 Full Driver & Software Package (TWAIN / WIA)。""",
 }
 
 
@@ -2311,6 +2346,8 @@ def apply_theme(mode):
 UI_LANG = "en"
 
 GR = {
+    "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
+        "Ανοίγει η σελίδα λήψεων της Brother. Το μοντέλο {model} αντιγράφηκε: επικόλλησέ το στην αναζήτηση (Ctrl+V). Τα περισσότερα μοντέλα Brother σαρώνουν και χωρίς driver μέσω δικτύου.",
     "Connect Epson Scan 2 to the scanner":
         "Σύνδεση του Epson Scan 2 με τον σαρωτή",
     "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
@@ -2698,6 +2735,8 @@ LANG_NAMES = {  # code: (English, Greek, tesseract code)
 
 # Other interface languages (keys are the English texts, like GR above).
 UI_FR = {
+    "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
+        "La page de téléchargement de Brother s’ouvre. Le modèle {model} est copié : collez-le dans la recherche (Ctrl+V). La plupart des modèles Brother numérisent aussi sans pilote en réseau.",
     "Connect Epson Scan 2 to the scanner":
         "Connecter Epson Scan 2 au scanner",
     "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
@@ -3324,6 +3363,8 @@ UI_FR = {
 }
 
 UI_DE = {
+    "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
+        "Die Download-Seite von Brother öffnet sich. Das Modell {model} ist kopiert: Fügen Sie es in die Suche ein (Strg+V). Die meisten Brother-Modelle scannen auch ohne Treiber über das Netzwerk.",
     "Connect Epson Scan 2 to the scanner":
         "Epson Scan 2 mit dem Scanner verbinden",
     "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
@@ -3950,6 +3991,8 @@ UI_DE = {
 }
 
 UI_IT = {
+    "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
+        "Si apre la pagina di download di Brother. Il modello {model} è copiato: incollalo nella ricerca (Ctrl+V). La maggior parte dei modelli Brother acquisisce anche senza driver in rete.",
     "Connect Epson Scan 2 to the scanner":
         "Collega Epson Scan 2 allo scanner",
     "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
@@ -4576,6 +4619,8 @@ UI_IT = {
 }
 
 UI_ES = {
+    "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
+        "Se abre la página de descargas de Brother. El modelo {model} está copiado: pégalo en la búsqueda (Ctrl+V). La mayoría de modelos Brother también escanean sin controlador por la red.",
     "Connect Epson Scan 2 to the scanner":
         "Conectar Epson Scan 2 con el escáner",
     "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
@@ -5202,6 +5247,8 @@ UI_ES = {
 }
 
 UI_RO = {
+    "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
+        "Se deschide pagina de descărcări Brother. Modelul {model} este copiat: lipiți-l în căutare (Ctrl+V). Majoritatea modelelor Brother scanează și fără driver prin rețea.",
     "Connect Epson Scan 2 to the scanner":
         "Conectați Epson Scan 2 la scanner",
     "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
@@ -5828,6 +5875,8 @@ UI_RO = {
 }
 
 UI_CS = {
+    "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
+        "Otevírá se stránka ke stažení Brother. Model {model} je zkopírovaný: vložte ho do hledání (Ctrl+V). Většina modelů Brother skenuje i bez ovladače po síti.",
     "Connect Epson Scan 2 to the scanner":
         "Připojit Epson Scan 2 ke skeneru",
     "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
@@ -6454,6 +6503,8 @@ UI_CS = {
 }
 
 UI_RU = {
+    "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
+        "Открывается страница загрузок Brother. Модель {model} скопирована: вставьте её в поиск (Ctrl+V). Большинство моделей Brother сканируют и без драйвера по сети.",
     "Connect Epson Scan 2 to the scanner":
         "Подключить Epson Scan 2 к сканеру",
     "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
@@ -7080,6 +7131,8 @@ UI_RU = {
 }
 
 UI_JA = {
+    "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
+        "Brother のダウンロードページを開きます。モデル {model} はコピー済みです。検索欄に貼り付けてください (Ctrl+V)。ほとんどの Brother モデルはドライバーなしでもネットワーク経由でスキャンできます。",
     "Connect Epson Scan 2 to the scanner":
         "Epson Scan 2 をスキャナーに接続",
     "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
@@ -7706,6 +7759,8 @@ UI_JA = {
 }
 
 UI_ZH = {
+    "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
+        "正在打开 Brother 下载页面。型号 {model} 已复制：请粘贴到搜索框 (Ctrl+V)。大多数 Brother 型号也可以无需驱动通过网络扫描。",
     "Connect Epson Scan 2 to the scanner":
         "将 Epson Scan 2 连接到扫描仪",
     "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
@@ -10621,6 +10676,11 @@ class Scanner(QWidget):
                         label=package["label"])) == QMessageBox.StandardButton.Yes:
                     self.install_driver(package, brand, model)
                     return
+        if brand == "Brother":
+            QGuiApplication.clipboard().setText(model)
+            self.set_status(tr("Brother's download page is opening. The model {model} is copied: paste it in the "
+                               "search box (Ctrl+V). Most Brother models also scan with no driver over the network.",
+                               model=model), "info")
         QDesktopServices.openUrl(QUrl(self.support_url(brand, model)))
 
     @staticmethod
@@ -10630,6 +10690,9 @@ class Scanner(QWidget):
                 {"device_id": f"{model} Series"})
         if brand == "Canon":
             return "https://www.canon-europe.com/search/?" + urllib.parse.urlencode({"q": model})
+        if brand == "Brother":
+            return "https://support.brother.com/g/b/productsearch.aspx?c=gr&lang=el&content=dl" \
+                if UI_LANG == "el" else "https://support.brother.com/g/b/productsearch.aspx?c=us&lang=en&content=dl"
         return "https://support.hp.com/drivers/scanners"
 
     def install_driver(self, package, brand, model):

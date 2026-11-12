@@ -30,6 +30,7 @@ and a status light that shows when someone else on the network is using the scan
 - **Drivers:**
   - Epson L14150 and Canon PIXMA TS3150: one-click driver install, with the publisher signature checked. See [Epson Scan 2 driver](#epson-scan-2-driver-epson-l14150-and-other-epson-scanners).
   - Other Epson, Canon and HP models (2024–2026): the Driver setup button opens the right driver page.
+  - **Brother** all-in-ones and ADS scanners from 2024 (MFC-L2820DW, DCP-L3560CDW, MFC-J4355DW, MFC-J6960DW, ADS-1800W…): they scan over the network with no driver (AirPrint / eSCL), or with Brother's driver package; Driver setup opens Brother's download page with the model copied.
 - **Over-the-air updates** from this repository's GitHub releases (SHA-256 checked).
 
 ## Install
