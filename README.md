@@ -25,9 +25,10 @@ and a status light that shows when someone else on the network is using the scan
   - Languages download automatically the first time they are used.
 - **Translation** of the recognised text with Google Translate (free), MyMemory (free) or your own LibreTranslate server, either automatically after every scan or from the Text window.
 - **Paper source "Auto":** uses the document feeder when it has paper, otherwise the flatbed glass.
-- **English / Ελληνικά**, **Auto / Light / Dark** theme.
+- **Send to your phone** on the same Wi-Fi: phones with the free LocalSend app, a QR code page for any phone, and AirDrop on a Mac. Photos from the phone can be saved or turned into a PDF like a scan.
+- **11 languages:** English, Ελληνικά, Français, Deutsch, Italiano, Español, Română, Čeština, Русский, 日本語, 中文 (简体). **Auto / Light / Dark** theme.
 - **Drivers:**
-  - Epson L14150 and Canon PIXMA TS3150: one-click driver install, with the publisher signature checked.
+  - Epson L14150 and Canon PIXMA TS3150: one-click driver install, with the publisher signature checked. See [Epson Scan 2 driver](#epson-scan-2-driver-epson-l14150-and-other-epson-scanners).
   - Other Epson, Canon and HP models (2024–2026): the Driver setup button opens the right driver page.
 - **Over-the-air updates** from this repository's GitHub releases (SHA-256 checked).
 
@@ -67,6 +68,56 @@ needs. Βάλε το zip δίπλα στην εφαρμογή και όλα εγ
 
 Την πρώτη φορά εγκαθιστά μόνο του ό,τι χρειάζεται. Πάτα **Σάρωση** και τα αρχεία αποθηκεύονται στα
 *Έγγραφα › What the Scan*. Όλες οι ρυθμίσεις είναι αυτόματες από προεπιλογή και αλλάζουν από τις **Ρυθμίσεις**.
+
+## Epson Scan 2 driver (Epson L14150 and other Epson scanners)
+
+**English**
+
+Windows needs Epson's own driver, **Epson Scan 2**, to scan from an Epson printer/scanner.
+
+1. **Install the driver.** Open What the Scan. If the scanner answers on the network but the driver is
+   missing, the app asks *"Scanner driver missing — install now?"*. Click **Yes**. The app downloads the official
+   driver from Epson (European server, Latin America as a fallback), checks Epson's digital signature and starts
+   the installer. Click **Next / Install** in Epson's windows if they appear.
+   You can also start it any time from **Settings › Scanner › Driver setup**.
+2. **Tell Epson Scan 2 where the scanner is (one time per PC).** After a new or repeated driver install, Epson Scan 2
+   does not know the scanner's network address. When you press **Scan**, What the Scan shows the steps and has
+   already copied the address for you:
+   1. Click **Open Epson Scan 2 Utility**.
+   2. At the top, in **Scanner**, choose **Settings**.
+   3. Click **Add**, choose **Enter address**, press **Ctrl+V** and click **OK**.
+   4. Click **OK**, close the utility and press **Scan** again.
+3. **Still not scanning?**
+   - The scanner must be on and on the same Wi-Fi/network as the PC (the address is in **Settings › Scanner › Network**).
+   - Give the printer a fixed address in your router, so it does not change after a restart.
+   - In Epson Scan 2 Utility, use **Other › Reset** and repeat step 2.
+   - Uninstalling the driver also removes step 2: do it again after reinstalling.
+
+Download page: [Epson Download Center · L14150](https://download-center.epson.com/softwares/?device_id=L14150%20Series)
+(*Scanner Driver and Epson Scan 2 Utility*).
+
+**Ελληνικά**
+
+Τα Windows χρειάζονται τον driver της Epson, το **Epson Scan 2**, για να σαρώνουν από εκτυπωτή/σαρωτή Epson.
+
+1. **Εγκατάσταση driver.** Άνοιξε το What the Scan. Αν ο σαρωτής απαντά στο δίκτυο αλλά λείπει ο driver, η εφαρμογή
+   ρωτά *«Λείπει ο driver του σαρωτή — εγκατάσταση τώρα;»*. Πάτα **Ναι**. Κατεβαίνει ο επίσημος driver της Epson
+   (ευρωπαϊκός server, εφεδρικός ο server Λατινικής Αμερικής), ελέγχεται η ψηφιακή υπογραφή της Epson και ξεκινά η
+   εγκατάσταση. Πάτα **Next / Install** στα παράθυρα της Epson αν εμφανιστούν.
+   Το ίδιο γίνεται κι από **Ρυθμίσεις › Σαρωτής › Εγκατάσταση driver**.
+2. **Πες στο Epson Scan 2 πού είναι ο σαρωτής (μία φορά σε κάθε PC).** Μετά από νέα εγκατάσταση ή επανεγκατάσταση
+   του driver, το Epson Scan 2 δεν ξέρει τη διεύθυνση του σαρωτή. Όταν πατήσεις **Σάρωση**, το What the Scan σού
+   δείχνει τα βήματα και έχει ήδη αντιγράψει τη διεύθυνση:
+   1. Πάτα **Άνοιγμα Epson Scan 2 Utility**.
+   2. Πάνω, στο **Scanner** (Σαρωτής), διάλεξε **Settings** (Ρυθμίσεις).
+   3. Πάτα **Add** (Προσθήκη), διάλεξε **Enter address** (Εισαγωγή διεύθυνσης), πάτα **Ctrl+V** και **OK**.
+   4. Πάτα **OK**, κλείσε το utility και ξαναπάτα **Σάρωση**.
+3. **Ακόμα δεν σαρώνει;**
+   - Ο σαρωτής πρέπει να είναι αναμμένος και στο ίδιο Wi-Fi/δίκτυο με το PC (η διεύθυνση φαίνεται στις
+     **Ρυθμίσεις › Σαρωτής › Δίκτυο**).
+   - Δώσε στον εκτυπωτή σταθερή διεύθυνση από το router, για να μην αλλάζει μετά από επανεκκίνηση.
+   - Στο Epson Scan 2 Utility πάτα **Other › Reset** (Άλλο › Επαναφορά) και κάνε ξανά το βήμα 2.
+   - Αν απεγκαταστήσεις τον driver, χάνεται και το βήμα 2: κάν' το ξανά μετά την εγκατάσταση.
 
 ## Publishing an update
 
