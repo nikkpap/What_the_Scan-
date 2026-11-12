@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from concurrent.futures import ThreadPoolExecutor
 from queue import Empty, Queue
 
-VERSION = "1.0.9"
+VERSION = "1.0.10"
 # Change this one line to rename the app everywhere.
 APP_NAME = "What the Scan?!"
 APP_TAGLINE = "Scanner busy? Now you know who."
@@ -91,6 +91,8 @@ PIP_PACKAGES = ("PyQt6>=6.6,<7", "PyMuPDF>=1.24,<2", "python-docx>=1.1", "certif
 # NAPS2's own OCR language packs (tesseract 4 data) and their published SHA-256 checksums.
 OCR_URL = "https://github.com/cyanfish/naps2-components/releases/download/tesseract-4.0.0b4/{code}.traineddata.zip"
 OCR_SHA256 = {
+    "ces": "fd9eb6ec0e646f48c2786bdc508b8a9e59d3d1ca034eff1dfbc930e1864fe9ba",
+    "jpn": "7ce9a993f7fb67099483d126820352768001ca356975ba4a691c23fe7c3e2245",
     "ara": "24d2a74937150e6d41a69f2758aea3817d7f80ed53f780adaa492a83e249b62f",
     "bul": "75efd60898e3f6e254f3a9059d53548b92140ff14c603cbc3d46061d7a2d257d",
     "chi_sim": "21ebe92da47078c237b776d5ef79b3668b6a5b76f1ec527588e60d57230f097d",
@@ -164,51 +166,503 @@ DRIVER_PACKAGES = {
         "check": None,
     },
 }
-GUIDE = """HOW TO SCAN (3 steps)
+GUIDES = {
+    'en': """HOW TO SCAN (3 steps)
   1. Turn on the scanner and load the paper (glass or document feeder).
-  2. Check the top card says  ✓ Connected to <your scanner>.
+  2. Check that the top card says  ✓ Connected to <your scanner>.
   3. Click  Scan.  It saves as PDF, JPG or PDF + JPG, as chosen in
-     Settings › Scanning › Save as  (PDF by default).
-     Tick "Also save an editable document" there and choose Word (.docx)
-     or OpenDocument (.odt, LibreOffice on Mac / Linux).
-     Files are saved automatically in Documents › What the Scan.
+     Settings › Scanning (PDF by default). Tick "Also save an editable document"
+     there for Word (.docx) or OpenDocument (.odt).
+     Files go to Documents › What the Scan.
+
+BUTTONS
+  Preview     quick look at the glass before scanning
+  Phone       send the scan to your phone, or receive photos from it
+  Text        recognised text (OCR), copy and translate
+  Open last / Open folder
 
 Everything is automatic by default:
   • The app finds every scanner on all drivers by itself (TWAIN, WIA, eSCL…).
-  • Paper source "Auto" uses the document feeder when it has paper,
-    otherwise the flatbed glass.
-  • Want to change something? ⚙ Settings (Ctrl+,):
-      Scanner   choose a different scanner, driver, model driver or network address
-      Scanning  save as PDF / JPG / both, paper source, size, resolution,
-                colour, save folder
-      Text & translation   OCR languages (auto or chosen), .txt, auto translation
-      General   language (EN / GR), theme (auto / light / dark), updates
-  • OCR languages download automatically the first time.
-  • The Text button shows the recognised text; translate it with Google
-    Translate (free), MyMemory or your own LibreTranslate server.
+    If a scanner answers on the network but its driver is missing, the app
+    offers to install the official driver.
+  • Paper source "Auto": document feeder if it has paper, otherwise the glass.
+  • OCR: English + Greek + your system language; languages download the first time.
+  • Translation: Google Translate (free), MyMemory as a fallback.
+
+PHONE (same Wi-Fi)
+  • Phones with the free LocalSend app appear by themselves: pick one, press Send.
+  • No LocalSend? Scan the QR code: a page opens to download the scan or send photos.
+  • From the phone: in LocalSend choose "What the Scan · <this PC>", or use the QR page.
+  • On a Mac, AirDrop sends the scan to an iPhone or another Mac.
 
 STATUS LIGHT
-  ● Green   Ready. The scanner is free, so you can scan.
-  ● Yellow  Idle. Searching, no scanner selected, or the scanner is on standby.
-  ● Red     In use. You or another person on the network is scanning.
-            Wait until the light turns green. The app beeps when the scanner is free.
-  Other PCs see that the scanner is busy only if they run this app too.
-  If Windows Firewall asks, allow the app on private networks.
+  ● Green   Ready. The scanner is free.
+  ● Yellow  Idle. Searching, no scanner, or the scanner is on standby.
+  ● Red     In use. You or someone else on the network is scanning.
+            Wait for green; the app beeps when the scanner is free.
 
 SHORTCUTS
-  Ctrl+S  scan    Ctrl+P  preview    Ctrl+T  text & translation
-  F5  search again    Ctrl+,  settings    F1  this guide    Esc  cancel
+  Ctrl+S scan   Ctrl+P preview   Ctrl+T text   F5 search again
+  Ctrl+, settings   F1 this guide   Esc cancel
 
 OFFLINE INSTALLATION
-  Put WhatTheScan-offline.zip (from the GitHub release) next to the app.
-  NAPS2, Python packages, drivers and OCR languages are then installed from it,
-  with no internet. Without the zip everything is downloaded as usual.
+  Put WhatTheScan-offline.zip (from the GitHub release) next to the app: NAPS2,
+  Python packages, drivers and OCR languages install from it with no internet.
 
 DRIVERS
-  Epson: Epson Scan 2 (Windows: add the scanner IP in Epson Scan 2 Utility).
-  Canon: MP Drivers. Settings › Scanner › Driver setup installs the TS3150 driver.
-  HP (incl. Smart Tank): works over the network with no driver (AirPrint / eSCL),
-      or with the HP Smart / HP Scan driver.  macOS: Image Capture.  Linux: SANE."""
+  Epson: Epson Scan 2.  Canon: MP Drivers.  HP (incl. Smart Tank): works over the
+  network with no driver (AirPrint / eSCL).  macOS: Image Capture.  Linux: SANE.""",
+    'el': """ΠΩΣ ΣΑΡΩΝΩ (3 βήματα)
+  1. Άναψε τον σαρωτή και βάλε το χαρτί (στο τζάμι ή στον τροφοδότη).
+  2. Έλεγξε ότι η πάνω κάρτα γράφει  ✓ Συνδέθηκε με <σαρωτής σου>.
+  3. Πάτα  Σάρωση.  Αποθηκεύει ως PDF, JPG ή PDF + JPG, όπως έχεις διαλέξει στις
+     Ρυθμίσεις › Σάρωση (PDF από προεπιλογή). Τσέκαρε εκεί «επεξεργάσιμο έγγραφο»
+     για Word (.docx) ή OpenDocument (.odt).
+     Τα αρχεία μπαίνουν στα Έγγραφα › What the Scan.
+
+ΚΟΥΜΠΙΑ
+  Προεπισκόπηση   γρήγορη ματιά στο τζάμι πριν τη σάρωση
+  Κινητό          στείλε τη σάρωση στο κινητό ή πάρε φωτογραφίες από αυτό
+  Κείμενο         το κείμενο που αναγνωρίστηκε (OCR), αντιγραφή και μετάφραση
+  Τελευταίο / Φάκελος
+
+Όλα είναι αυτόματα από προεπιλογή:
+  • Η εφαρμογή βρίσκει μόνη της κάθε σαρωτή σε όλους τους drivers.
+    Αν ένας σαρωτής απαντά στο δίκτυο αλλά λείπει ο driver του, προτείνει
+    εγκατάσταση του επίσημου driver.
+  • Πηγή χαρτιού «Αυτόματα»: τροφοδότης αν έχει χαρτί, αλλιώς τζάμι.
+  • OCR: Αγγλικά + Ελληνικά + η γλώσσα του συστήματος· κατεβαίνουν την πρώτη φορά.
+  • Μετάφραση: Google Translate (δωρεάν), με εφεδρεία το MyMemory.
+
+ΚΙΝΗΤΟ (ίδιο Wi-Fi)
+  • Τα κινητά με τη δωρεάν εφαρμογή LocalSend εμφανίζονται μόνα τους: διάλεξε, «Αποστολή».
+  • Χωρίς LocalSend; Σκάναρε το QR code: ανοίγει σελίδα για λήψη ή αποστολή φωτογραφιών.
+  • Από το κινητό: στο LocalSend διάλεξε «What the Scan · <αυτό το PC>» ή τη σελίδα του QR.
+  • Σε Mac, το AirDrop στέλνει τη σάρωση σε iPhone ή άλλο Mac.
+
+ΦΩΤΑΚΙ ΚΑΤΑΣΤΑΣΗΣ
+  ● Πράσινο   Έτοιμο. Ο σαρωτής είναι ελεύθερος.
+  ● Κίτρινο   Αναμονή. Αναζήτηση, κανένας σαρωτής ή ο σαρωτής σε αναμονή.
+  ● Κόκκινο   Σε χρήση. Σαρώνεις εσύ ή κάποιος άλλος στο δίκτυο.
+              Περίμενε το πράσινο· η εφαρμογή κάνει ήχο όταν ελευθερωθεί.
+
+ΣΥΝΤΟΜΕΥΣΕΙΣ
+  Ctrl+S σάρωση   Ctrl+P προεπισκόπηση   Ctrl+T κείμενο   F5 νέα αναζήτηση
+  Ctrl+, ρυθμίσεις   F1 οδηγός   Esc ακύρωση
+
+ΕΓΚΑΤΑΣΤΑΣΗ ΧΩΡΙΣ INTERNET
+  Βάλε το WhatTheScan-offline.zip (από το release στο GitHub) δίπλα στην εφαρμογή:
+  NAPS2, πακέτα Python, drivers και γλώσσες OCR εγκαθίστανται από εκεί.
+
+DRIVERS
+  Epson: Epson Scan 2.  Canon: MP Drivers.  HP (και Smart Tank): δουλεύει μέσω
+  δικτύου χωρίς driver (AirPrint / eSCL).  macOS: Image Capture.  Linux: SANE.""",
+    'fr': """NUMÉRISER (3 étapes)
+  1. Allumez le scanner et placez le papier (vitre ou chargeur de documents).
+  2. Vérifiez que la carte du haut indique  ✓ Connecté à <votre scanner>.
+  3. Cliquez sur  Numériser.  Enregistre en PDF, JPG ou PDF + JPG, selon
+     Paramètres › Numérisation (PDF par défaut). Cochez « document modifiable »
+     pour Word (.docx) ou OpenDocument (.odt).
+     Les fichiers vont dans Documents › What the Scan.
+
+BOUTONS
+  Aperçu      coup d’œil rapide sur la vitre avant de numériser
+  Téléphone   envoyer la numérisation au téléphone, ou en recevoir des photos
+  Texte       texte reconnu (OCR), copier et traduire
+  Dernier fichier / Dossier
+
+Tout est automatique par défaut :
+  • L’application trouve seule chaque scanner, sur tous les pilotes.
+    Si un scanner répond sur le réseau mais que son pilote manque,
+    elle propose d’installer le pilote officiel.
+  • Source du papier « Auto » : chargeur s’il contient du papier, sinon vitre.
+  • OCR : anglais + grec + la langue du système ; téléchargé la première fois.
+  • Traduction : Google Traduction (gratuit), MyMemory en secours.
+
+TÉLÉPHONE (même Wi-Fi)
+  • Les téléphones avec l’application gratuite LocalSend apparaissent seuls : choisissez, Envoyer.
+  • Pas de LocalSend ? Scannez le code QR : une page s’ouvre pour télécharger ou envoyer des photos.
+  • Depuis le téléphone : dans LocalSend, choisissez « What the Scan · <ce PC> » ou la page QR.
+  • Sur Mac, AirDrop envoie la numérisation vers un iPhone ou un autre Mac.
+
+VOYANT D’ÉTAT
+  ● Vert    Prêt. Le scanner est libre.
+  ● Jaune   Inactif. Recherche, aucun scanner, ou scanner en veille.
+  ● Rouge   Occupé. Vous ou quelqu’un d’autre sur le réseau numérise.
+            Attendez le vert ; l’application émet un bip quand il est libre.
+
+RACCOURCIS
+  Ctrl+S numériser   Ctrl+P aperçu   Ctrl+T texte   F5 rechercher
+  Ctrl+, paramètres   F1 ce guide   Échap annuler
+
+INSTALLATION HORS LIGNE
+  Placez WhatTheScan-offline.zip (version GitHub) à côté de l’application : NAPS2,
+  paquets Python, pilotes et langues OCR s’installent sans Internet.
+
+PILOTES
+  Epson : Epson Scan 2.  Canon : MP Drivers.  HP (y compris Smart Tank) : en réseau
+  sans pilote (AirPrint / eSCL).  macOS : Transfert d’images.  Linux : SANE.""",
+    'de': """SO SCANNEN SIE (3 Schritte)
+  1. Scanner einschalten und Papier einlegen (Glasplatte oder Einzug).
+  2. Prüfen Sie, dass oben  ✓ Verbunden mit <Ihr Scanner>  steht.
+  3. Klicken Sie auf  Scannen.  Gespeichert wird als PDF, JPG oder PDF + JPG, wie
+     unter Einstellungen › Scannen gewählt (Standard: PDF). Für Word (.docx) oder
+     OpenDocument (.odt) dort „bearbeitbares Dokument“ ankreuzen.
+     Die Dateien landen in Dokumente › What the Scan.
+
+SCHALTFLÄCHEN
+  Vorschau    schneller Blick auf die Glasplatte vor dem Scan
+  Handy       Scan ans Handy senden oder Fotos davon empfangen
+  Text        erkannter Text (OCR), kopieren und übersetzen
+  Letzte öffnen / Ordner öffnen
+
+Standardmäßig ist alles automatisch:
+  • Die App findet jeden Scanner über alle Treiber selbst.
+    Antwortet ein Scanner im Netzwerk, aber sein Treiber fehlt,
+    bietet die App die Installation des offiziellen Treibers an.
+  • Papierquelle „Auto“: Einzug, wenn Papier drin ist, sonst Glasplatte.
+  • OCR: Englisch + Griechisch + Systemsprache; Download beim ersten Mal.
+  • Übersetzung: Google Übersetzer (kostenlos), MyMemory als Ersatz.
+
+HANDY (gleiches WLAN)
+  • Handys mit der kostenlosen App LocalSend erscheinen von selbst: wählen, Senden.
+  • Kein LocalSend? QR-Code scannen: eine Seite zum Herunterladen oder Senden von Fotos öffnet sich.
+  • Vom Handy: in LocalSend „What the Scan · <dieser PC>“ wählen oder die QR-Seite nutzen.
+  • Auf dem Mac sendet AirDrop den Scan an ein iPhone oder einen anderen Mac.
+
+STATUSLICHT
+  ● Grün    Bereit. Der Scanner ist frei.
+  ● Gelb    Leerlauf. Suche, kein Scanner oder Scanner im Standby.
+  ● Rot     Belegt. Sie oder jemand anderes im Netzwerk scannt.
+            Warten Sie auf Grün; die App piept, wenn der Scanner frei ist.
+
+TASTENKÜRZEL
+  Strg+S scannen   Strg+P Vorschau   Strg+T Text   F5 erneut suchen
+  Strg+, Einstellungen   F1 diese Anleitung   Esc abbrechen
+
+OFFLINE-INSTALLATION
+  WhatTheScan-offline.zip (aus dem GitHub-Release) neben die App legen: NAPS2,
+  Python-Pakete, Treiber und OCR-Sprachen werden ohne Internet installiert.
+
+TREIBER
+  Epson: Epson Scan 2.  Canon: MP Drivers.  HP (auch Smart Tank): im Netzwerk ohne
+  Treiber (AirPrint / eSCL).  macOS: Digitale Bilder.  Linux: SANE.""",
+    'it': """COME ACQUISIRE (3 passi)
+  1. Accendi lo scanner e inserisci la carta (piano o alimentatore).
+  2. Controlla che la scheda in alto dica  ✓ Connesso a <il tuo scanner>.
+  3. Fai clic su  Scansiona.  Salva in PDF, JPG o PDF + JPG, come scelto in
+     Impostazioni › Scansione (PDF di default). Spunta «documento modificabile»
+     per Word (.docx) o OpenDocument (.odt).
+     I file vanno in Documenti › What the Scan.
+
+PULSANTI
+  Anteprima   rapida occhiata al piano prima di acquisire
+  Telefono    invia la scansione al telefono o ricevi foto da esso
+  Testo       testo riconosciuto (OCR), copia e traduci
+  Apri ultimo / Apri cartella
+
+Tutto è automatico di default:
+  • L’app trova da sola ogni scanner, su tutti i driver.
+    Se uno scanner risponde in rete ma manca il suo driver,
+    l’app propone di installare il driver ufficiale.
+  • Origine carta «Auto»: alimentatore se ha carta, altrimenti piano.
+  • OCR: inglese + greco + lingua di sistema; scaricate la prima volta.
+  • Traduzione: Google Traduttore (gratis), MyMemory come riserva.
+
+TELEFONO (stessa Wi-Fi)
+  • I telefoni con l’app gratuita LocalSend compaiono da soli: scegli, Invia.
+  • Niente LocalSend? Scansiona il codice QR: si apre una pagina per scaricare o inviare foto.
+  • Dal telefono: in LocalSend scegli «What the Scan · <questo PC>» o usa la pagina QR.
+  • Su Mac, AirDrop invia la scansione a un iPhone o a un altro Mac.
+
+SPIA DI STATO
+  ● Verde    Pronto. Lo scanner è libero.
+  ● Giallo   Inattivo. Ricerca, nessuno scanner o scanner in standby.
+  ● Rosso    In uso. Tu o qualcun altro in rete state acquisendo.
+             Attendi il verde; l’app emette un suono quando è libero.
+
+SCORCIATOIE
+  Ctrl+S scansiona   Ctrl+P anteprima   Ctrl+T testo   F5 cerca di nuovo
+  Ctrl+, impostazioni   F1 questa guida   Esc annulla
+
+INSTALLAZIONE OFFLINE
+  Metti WhatTheScan-offline.zip (dalla release su GitHub) accanto all’app: NAPS2,
+  pacchetti Python, driver e lingue OCR si installano senza Internet.
+
+DRIVER
+  Epson: Epson Scan 2.  Canon: MP Drivers.  HP (anche Smart Tank): in rete senza
+  driver (AirPrint / eSCL).  macOS: Acquisizione Immagine.  Linux: SANE.""",
+    'es': """CÓMO ESCANEAR (3 pasos)
+  1. Enciende el escáner y coloca el papel (cristal o alimentador).
+  2. Comprueba que la tarjeta superior diga  ✓ Conectado a <tu escáner>.
+  3. Haz clic en  Escanear.  Guarda en PDF, JPG o PDF + JPG, según
+     Ajustes › Escaneo (PDF por defecto). Marca «documento editable»
+     para Word (.docx) u OpenDocument (.odt).
+     Los archivos van a Documentos › What the Scan.
+
+BOTONES
+  Vista previa   vistazo rápido al cristal antes de escanear
+  Móvil          envía el escaneo al móvil o recibe fotos de él
+  Texto          texto reconocido (OCR), copiar y traducir
+  Abrir último / Abrir carpeta
+
+Todo es automático por defecto:
+  • La app encuentra sola cada escáner, en todos los controladores.
+    Si un escáner responde en la red pero falta su controlador,
+    la app ofrece instalar el controlador oficial.
+  • Origen del papel «Auto»: alimentador si tiene papel, si no, cristal.
+  • OCR: inglés + griego + idioma del sistema; se descargan la primera vez.
+  • Traducción: Google Traductor (gratis), MyMemory como respaldo.
+
+MÓVIL (misma Wi-Fi)
+  • Los móviles con la app gratuita LocalSend aparecen solos: elige uno, Enviar.
+  • ¿Sin LocalSend? Escanea el código QR: se abre una página para descargar o enviar fotos.
+  • Desde el móvil: en LocalSend elige «What the Scan · <este PC>» o usa la página QR.
+  • En Mac, AirDrop envía el escaneo a un iPhone u otro Mac.
+
+LUZ DE ESTADO
+  ● Verde      Listo. El escáner está libre.
+  ● Amarillo   Inactivo. Buscando, sin escáner o escáner en espera.
+  ● Rojo       En uso. Tú u otra persona de la red está escaneando.
+               Espera al verde; la app pita cuando queda libre.
+
+ATAJOS
+  Ctrl+S escanear   Ctrl+P vista previa   Ctrl+T texto   F5 buscar de nuevo
+  Ctrl+, ajustes   F1 esta guía   Esc cancelar
+
+INSTALACIÓN SIN CONEXIÓN
+  Pon WhatTheScan-offline.zip (de la versión en GitHub) junto a la app: NAPS2,
+  paquetes de Python, controladores e idiomas OCR se instalan sin Internet.
+
+CONTROLADORES
+  Epson: Epson Scan 2.  Canon: MP Drivers.  HP (incl. Smart Tank): en red sin
+  controlador (AirPrint / eSCL).  macOS: Captura de Imagen.  Linux: SANE.""",
+    'ro': """CUM SCANAȚI (3 pași)
+  1. Porniți scannerul și puneți hârtia (pe geam sau în alimentator).
+  2. Verificați că sus scrie  ✓ Conectat la <scannerul dvs.>.
+  3. Faceți clic pe  Scanează.  Salvează ca PDF, JPG sau PDF + JPG, după
+     Setări › Scanare (implicit PDF). Bifați acolo „document editabil”
+     pentru Word (.docx) sau OpenDocument (.odt).
+     Fișierele ajung în Documente › What the Scan.
+
+BUTOANE
+  Previzualizare   privire rapidă pe geam înainte de scanare
+  Telefon          trimiteți scanarea pe telefon sau primiți fotografii de la el
+  Text             textul recunoscut (OCR), copiere și traducere
+  Deschide ultimul / Deschide dosarul
+
+Totul este automat implicit:
+  • Aplicația găsește singură fiecare scanner, pe toate driverele.
+    Dacă un scanner răspunde în rețea dar îi lipsește driverul,
+    aplicația propune instalarea driverului oficial.
+  • Sursa hârtiei „Auto”: alimentatorul dacă are hârtie, altfel geamul.
+  • OCR: engleză + greacă + limba sistemului; se descarcă prima dată.
+  • Traducere: Google Traducere (gratuit), MyMemory ca rezervă.
+
+TELEFON (aceeași rețea Wi-Fi)
+  • Telefoanele cu aplicația gratuită LocalSend apar singure: alegeți, Trimite.
+  • Nu aveți LocalSend? Scanați codul QR: se deschide o pagină pentru descărcare sau trimitere poze.
+  • De pe telefon: în LocalSend alegeți „What the Scan · <acest PC>” sau pagina QR.
+  • Pe Mac, AirDrop trimite scanarea către un iPhone sau alt Mac.
+
+LUMINA DE STARE
+  ● Verde     Gata. Scannerul este liber.
+  ● Galben    Inactiv. Căutare, niciun scanner sau scanner în așteptare.
+  ● Roșu      Ocupat. Dvs. sau altcineva din rețea scanează.
+              Așteptați verdele; aplicația emite un sunet când e liber.
+
+SCURTĂTURI
+  Ctrl+S scanare   Ctrl+P previzualizare   Ctrl+T text   F5 caută din nou
+  Ctrl+, setări   F1 acest ghid   Esc anulare
+
+INSTALARE OFFLINE
+  Puneți WhatTheScan-offline.zip (din release-ul GitHub) lângă aplicație: NAPS2,
+  pachetele Python, driverele și limbile OCR se instalează fără internet.
+
+DRIVERE
+  Epson: Epson Scan 2.  Canon: MP Drivers.  HP (inclusiv Smart Tank): în rețea fără
+  driver (AirPrint / eSCL).  macOS: Captură imagine.  Linux: SANE.""",
+    'cs': """JAK SKENOVAT (3 kroky)
+  1. Zapněte skener a vložte papír (na sklo nebo do podavače).
+  2. Zkontrolujte, že horní karta ukazuje  ✓ Připojeno k <váš skener>.
+  3. Klikněte na  Skenovat.  Uloží se jako PDF, JPG nebo PDF + JPG podle
+     Nastavení › Skenování (výchozí PDF). Pro Word (.docx) nebo OpenDocument
+     (.odt) tam zaškrtněte „upravitelný dokument“.
+     Soubory se ukládají do Dokumenty › What the Scan.
+
+TLAČÍTKA
+  Náhled      rychlý pohled na sklo před skenováním
+  Telefon     poslat sken do telefonu nebo z něj přijmout fotky
+  Text        rozpoznaný text (OCR), kopírování a překlad
+  Otevřít poslední / Otevřít složku
+
+Vše je ve výchozím stavu automatické:
+  • Aplikace sama najde každý skener přes všechny ovladače.
+    Pokud skener odpovídá v síti, ale chybí jeho ovladač,
+    aplikace nabídne instalaci oficiálního ovladače.
+  • Zdroj papíru „Auto“: podavač, je-li v něm papír, jinak sklo.
+  • OCR: angličtina + řečtina + jazyk systému; stáhne se poprvé.
+  • Překlad: Překladač Google (zdarma), záložně MyMemory.
+
+TELEFON (stejná Wi-Fi)
+  • Telefony s bezplatnou aplikací LocalSend se objeví samy: vyberte, Odeslat.
+  • Nemáte LocalSend? Naskenujte QR kód: otevře se stránka pro stažení nebo odeslání fotek.
+  • Z telefonu: v LocalSend vyberte „What the Scan · <tento PC>“ nebo stránku z QR.
+  • Na Macu pošle AirDrop sken do iPhonu nebo jiného Macu.
+
+STAVOVÁ KONTROLKA
+  ● Zelená    Připraveno. Skener je volný.
+  ● Žlutá     Nečinný. Hledání, žádný skener nebo skener v pohotovosti.
+  ● Červená   Používá se. Skenujete vy nebo někdo jiný v síti.
+              Počkejte na zelenou; aplikace pípne, až bude volný.
+
+ZKRATKY
+  Ctrl+S skenovat   Ctrl+P náhled   Ctrl+T text   F5 hledat znovu
+  Ctrl+, nastavení   F1 tento návod   Esc zrušit
+
+INSTALACE BEZ INTERNETU
+  Dejte WhatTheScan-offline.zip (z vydání na GitHubu) vedle aplikace: NAPS2,
+  balíčky Pythonu, ovladače a jazyky OCR se nainstalují bez internetu.
+
+OVLADAČE
+  Epson: Epson Scan 2.  Canon: MP Drivers.  HP (i Smart Tank): po síti bez
+  ovladače (AirPrint / eSCL).  macOS: Digitální fotografie.  Linux: SANE.""",
+    'ru': """КАК СКАНИРОВАТЬ (3 шага)
+  1. Включите сканер и положите бумагу (на стекло или в податчик).
+  2. Убедитесь, что вверху написано  ✓ Подключено к <ваш сканер>.
+  3. Нажмите  Сканировать.  Сохраняется в PDF, JPG или PDF + JPG, как выбрано в
+     Настройки › Сканирование (по умолчанию PDF). Для Word (.docx) или
+     OpenDocument (.odt) отметьте там «редактируемый документ».
+     Файлы сохраняются в Документы › What the Scan.
+
+КНОПКИ
+  Предпросмотр   быстрый взгляд на стекло перед сканированием
+  Телефон        отправить скан на телефон или получить с него фото
+  Текст          распознанный текст (OCR), копирование и перевод
+  Последний файл / Открыть папку
+
+По умолчанию всё автоматически:
+  • Приложение само находит каждый сканер через все драйверы.
+    Если сканер отвечает в сети, но нет его драйвера,
+    приложение предложит установить официальный драйвер.
+  • Источник бумаги «Авто»: податчик, если в нём есть бумага, иначе стекло.
+  • OCR: английский + греческий + язык системы; скачиваются при первом запуске.
+  • Перевод: Google Переводчик (бесплатно), запасной вариант MyMemory.
+
+ТЕЛЕФОН (одна Wi-Fi)
+  • Телефоны с бесплатным приложением LocalSend появляются сами: выберите, «Отправить».
+  • Нет LocalSend? Отсканируйте QR-код: откроется страница для скачивания или отправки фото.
+  • С телефона: в LocalSend выберите «What the Scan · <этот ПК>» или страницу QR.
+  • На Mac AirDrop отправит скан на iPhone или другой Mac.
+
+ИНДИКАТОР СОСТОЯНИЯ
+  ● Зелёный   Готов. Сканер свободен.
+  ● Жёлтый    Ожидание. Поиск, нет сканера или сканер в режиме ожидания.
+  ● Красный   Занят. Сканируете вы или кто-то другой в сети.
+              Дождитесь зелёного; приложение подаст сигнал, когда он освободится.
+
+СОЧЕТАНИЯ КЛАВИШ
+  Ctrl+S сканировать   Ctrl+P предпросмотр   Ctrl+T текст   F5 искать снова
+  Ctrl+, настройки   F1 это руководство   Esc отмена
+
+УСТАНОВКА БЕЗ ИНТЕРНЕТА
+  Положите WhatTheScan-offline.zip (из выпуска на GitHub) рядом с приложением:
+  NAPS2, пакеты Python, драйверы и языки OCR установятся без интернета.
+
+ДРАЙВЕРЫ
+  Epson: Epson Scan 2.  Canon: MP Drivers.  HP (включая Smart Tank): по сети без
+  драйвера (AirPrint / eSCL).  macOS: Захват изображений.  Linux: SANE.""",
+    'ja': """スキャンの手順（3 ステップ）
+  1. スキャナーの電源を入れ、用紙をセットします（原稿台または ADF）。
+  2. 上のカードに  ✓ <スキャナー> に接続しました  と表示されていることを確認します。
+  3. 「スキャン」をクリック。設定 › スキャン で選んだ形式（既定は PDF）で
+     PDF、JPG、または PDF + JPG として保存します。Word (.docx) や
+     OpenDocument (.odt) が必要なら「編集可能な文書」にチェックを入れます。
+     ファイルは 書類 › What the Scan に保存されます。
+
+ボタン
+  プレビュー   スキャン前に原稿台をすばやく確認
+  スマホ       スキャンをスマートフォンに送る／スマートフォンから写真を受け取る
+  テキスト     認識したテキスト (OCR)、コピーと翻訳
+  最後のファイル / フォルダーを開く
+
+既定ではすべて自動です:
+  • すべてのドライバーでスキャナーを自動で見つけます。
+    ネットワーク上で応答するのにドライバーがない場合は、
+    公式ドライバーのインストールを提案します。
+  • 給紙「自動」: ADF に用紙があれば ADF、なければ原稿台。
+  • OCR: 英語 + ギリシャ語 + システムの言語。初回に自動ダウンロード。
+  • 翻訳: Google 翻訳（無料）、予備に MyMemory。
+
+スマートフォン（同じ Wi-Fi）
+  • 無料アプリ LocalSend のあるスマートフォンは自動で表示されます。選んで「送信」。
+  • LocalSend がない場合: QR コードを読み取ると、ダウンロード／写真送信用のページが開きます。
+  • スマートフォンから: LocalSend で「What the Scan · <この PC>」を選ぶか、QR ページを使います。
+  • Mac では AirDrop で iPhone や別の Mac に送れます。
+
+状態ランプ
+  ● 緑   準備完了。スキャナーは空いています。
+  ● 黄   待機中。検索中、スキャナーなし、またはスタンバイ。
+  ● 赤   使用中。自分またはネットワーク上の誰かがスキャン中です。
+         緑になるまでお待ちください。空くと音でお知らせします。
+
+ショートカット
+  Ctrl+S スキャン   Ctrl+P プレビュー   Ctrl+T テキスト   F5 再検索
+  Ctrl+, 設定   F1 このガイド   Esc キャンセル
+
+オフラインインストール
+  WhatTheScan-offline.zip（GitHub のリリース）をアプリの隣に置くと、NAPS2、
+  Python パッケージ、ドライバー、OCR 言語がインターネットなしでインストールされます。
+
+ドライバー
+  Epson: Epson Scan 2。Canon: MP Drivers。HP（Smart Tank を含む）: ドライバーなしで
+  ネットワーク経由 (AirPrint / eSCL)。macOS: イメージキャプチャ。Linux: SANE。""",
+    'zh': """如何扫描（3 步）
+  1. 打开扫描仪并放好纸张（平板或自动进纸器）。
+  2. 确认顶部卡片显示  ✓ 已连接到 <你的扫描仪>。
+  3. 点击“扫描”。按 设置 › 扫描 中的选择保存为 PDF、JPG 或 PDF + JPG
+     （默认 PDF）。如需 Word (.docx) 或 OpenDocument (.odt)，
+     请在那里勾选“可编辑文档”。
+     文件保存在 文档 › What the Scan。
+
+按钮
+  预览         扫描前快速查看平板
+  手机         把扫描件发送到手机，或从手机接收照片
+  文字         识别的文字 (OCR)，复制和翻译
+  打开最近 / 打开文件夹
+
+默认一切自动：
+  • 应用会通过所有驱动自动查找每台扫描仪。
+    如果扫描仪在网络上有响应但缺少驱动，
+    应用会提示安装官方驱动。
+  • 纸张来源“自动”：进纸器有纸时用进纸器，否则用平板。
+  • OCR：英语 + 希腊语 + 系统语言；首次使用时自动下载。
+  • 翻译：Google 翻译（免费），备用 MyMemory。
+
+手机（同一 Wi-Fi）
+  • 装有免费应用 LocalSend 的手机会自动出现：选择后点“发送”。
+  • 没有 LocalSend？扫描二维码，会打开一个用于下载或发送照片的页面。
+  • 从手机发送：在 LocalSend 中选择“What the Scan · <这台电脑>”，或使用二维码页面。
+  • 在 Mac 上，可通过隔空投送 (AirDrop) 发送到 iPhone 或其他 Mac。
+
+状态指示灯
+  ● 绿色   就绪。扫描仪空闲。
+  ● 黄色   空闲。正在搜索、没有扫描仪或扫描仪待机。
+  ● 红色   使用中。你或网络上的其他人正在扫描。
+           请等待变绿；扫描仪空闲时应用会发出提示音。
+
+快捷键
+  Ctrl+S 扫描   Ctrl+P 预览   Ctrl+T 文字   F5 重新搜索
+  Ctrl+, 设置   F1 本指南   Esc 取消
+
+离线安装
+  将 WhatTheScan-offline.zip（GitHub 发布页）放在应用旁边：NAPS2、
+  Python 包、驱动和 OCR 语言都会在无网络情况下安装。
+
+驱动
+  Epson：Epson Scan 2。Canon：MP Drivers。HP（含 Smart Tank）：无需驱动即可通过
+  网络使用 (AirPrint / eSCL)。macOS：图像捕捉。Linux：SANE。""",
+}
 
 
 def normalize(text):
@@ -1320,18 +1774,8 @@ def clean_old_previews():
 
 # ---------------------------------------------------------------- about / OTA
 def about_html():
-    greek = UI_LANG == "el"
-    blurb = (f"Σάρωση σε PDF, JPG, Word και OpenDocument από σαρωτές {BRANDS}, με OCR, μετάφραση και φωτάκι που δείχνει "
-             "πότε κάποιος άλλος στο δίκτυο χρησιμοποιεί τον σαρωτή.") if greek else (
-             f"Scan to PDF, JPG, Word and OpenDocument from {BRANDS} scanners, with OCR, translation and a status light "
-             "that shows when somebody else on the network is using the scanner.")
-    maker = ("<b>Δημιουργός: Νικόλαος Κ. Παρίδης</b> (nikkpap)<br>ALU DEV TEAM · Πολιτικός μηχανικός &amp; "
-             "developer εφαρμογών desktop και κινητού<br>Πτολεμαΐδα") if greek else (
-             "<b>Made by Nikolaos K. Paridis</b> (nikkpap)<br>ALU DEV TEAM · Civil engineer &amp; developer of "
-             "desktop and mobile tools<br>Ptolemaida, Greece")
-    project = "Σελίδα &amp; ενημερώσεις" if greek else "Project page &amp; updates"
-    more = "Περισσότερες εφαρμογές" if greek else "More apps"
-    version = "Έκδοση" if greek else "Version"
+    blurb, maker, project, more, version = ABOUT.get(UI_LANG, ABOUT["en"])
+    blurb = blurb.format(brands=BRANDS)
     return f"""
 <h2 style="margin-bottom:2px">{APP_NAME}</h2>
 <p style="margin-top:0">{version} {VERSION} · {APP_TAGLINE}</p>
@@ -1344,49 +1788,19 @@ Google Translate · MyMemory · LibreTranslate</p>
 """
 
 
-GUIDE_GR = """ΠΩΣ ΣΑΡΩΝΩ (3 βήματα)
-  1. Άναψε τον σαρωτή και βάλε το χαρτί (στο τζάμι ή στον τροφοδότη).
-  2. Έλεγξε ότι η πάνω κάρτα γράφει  ✓ Συνδέθηκε στο <σαρωτής σου>.
-  3. Πάτα  Σάρωση.  Αποθηκεύει ως PDF, JPG ή PDF + JPG,
-     όπως έχεις διαλέξει στις Ρυθμίσεις › Σάρωση › Αποθήκευση ως (PDF από προεπιλογή).
-     Τσέκαρε εκεί «επεξεργάσιμο έγγραφο» και διάλεξε Word (.docx)
-     ή OpenDocument (.odt, LibreOffice σε Mac / Linux).
-     Τα αρχεία μπαίνουν αυτόματα στα Έγγραφα › What the Scan.
-
-ΚΟΥΜΠΙΑ
-  Προεπισκόπηση   γρήγορη ματιά στο τζάμι πριν τη σάρωση
-  Κείμενο         το κείμενο που αναγνωρίστηκε (OCR), αντιγραφή και μετάφραση
-  Άνοιγμα τελευταίου / Άνοιγμα φακέλου
-
-Όλα είναι αυτόματα από προεπιλογή:
-  • Η εφαρμογή βρίσκει μόνη της κάθε σαρωτή σε όλους τους drivers.
-  • Πηγή χαρτιού «Αυτόματα»: τροφοδότης αν έχει χαρτί, αλλιώς τζάμι.
-  • OCR: Αγγλικά + Ελληνικά + η γλώσσα του συστήματος. Οι γλώσσες κατεβαίνουν
-    αυτόματα την πρώτη φορά.
-  • Μετάφραση: Google Translate (δωρεάν), με εφεδρεία το MyMemory.
-
-ΦΩΤΑΚΙ ΚΑΤΑΣΤΑΣΗΣ
-  ● Πράσινο   Έτοιμο. Ο σαρωτής είναι ελεύθερος.
-  ● Κίτρινο   Αναμονή. Αναζήτηση, κανένας σαρωτής ή ο σαρωτής σε αναμονή.
-  ● Κόκκινο   Σε χρήση. Σαρώνεις εσύ ή κάποιος άλλος στο δίκτυο.
-              Περίμενε να γίνει πράσινο. Η εφαρμογή κάνει ήχο όταν ελευθερωθεί.
-  Τα άλλα PC το βλέπουν μόνο αν τρέχουν κι αυτά την εφαρμογή.
-  Αν ρωτήσει το Τείχος προστασίας των Windows, επίτρεψέ την στα ιδιωτικά δίκτυα.
-
-ΣΥΝΤΟΜΕΥΣΕΙΣ
-  Ctrl+S σάρωση   Ctrl+P προεπισκόπηση   Ctrl+T κείμενο
-  F5 νέα αναζήτηση   Ctrl+, ρυθμίσεις   F1 οδηγός   Esc ακύρωση
-
-ΕΓΚΑΤΑΣΤΑΣΗ ΧΩΡΙΣ INTERNET
-  Βάλε το WhatTheScan-offline.zip (από το release στο GitHub) δίπλα στην εφαρμογή.
-  Το NAPS2, τα πακέτα Python, οι drivers και οι γλώσσες OCR εγκαθίστανται από
-  εκεί, χωρίς internet. Χωρίς το zip όλα κατεβαίνουν όπως πάντα.
-
-DRIVERS
-  Epson: Epson Scan 2 (Windows: πρόσθεσε την IP στο Epson Scan 2 Utility).
-  Canon: MP Drivers. Ρυθμίσεις › Σαρωτής › Εγκατάσταση driver για το TS3150.
-  HP (και Smart Tank): δουλεύει μέσω δικτύου χωρίς driver (AirPrint / eSCL)
-      ή με τον driver HP Smart / HP Scan.  macOS: Image Capture.  Linux: SANE."""
+ABOUT = {
+    'en': ("Scan to PDF, JPG, Word and OpenDocument from {brands} scanners, with OCR, translation, sending to your phone and a status light that shows when somebody else on the network is using the scanner.", "<b>Made by Nikolaos K. Paridis</b> (nikkpap)<br>ALU DEV TEAM · Civil engineer &amp; developer of desktop and mobile tools<br>Ptolemaida, Greece", "Project page &amp; updates", "More apps", "Version"),
+    'el': ("Σάρωση σε PDF, JPG, Word και OpenDocument από σαρωτές {brands}, με OCR, μετάφραση, αποστολή στο κινητό και φωτάκι που δείχνει πότε κάποιος άλλος στο δίκτυο χρησιμοποιεί τον σαρωτή.", "<b>Δημιουργός: Νικόλαος Κ. Παρίδης</b> (nikkpap)<br>ALU DEV TEAM · Πολιτικός μηχανικός &amp; developer εφαρμογών desktop και κινητού<br>Πτολεμαΐδα", "Σελίδα &amp; ενημερώσεις", "Περισσότερες εφαρμογές", "Έκδοση"),
+    'fr': ("Numérisez en PDF, JPG, Word et OpenDocument depuis les scanners {brands}, avec OCR, traduction, envoi vers le téléphone et un voyant qui indique quand quelqu’un d’autre sur le réseau utilise le scanner.", "<b>Créé par Nikolaos K. Paridis</b> (nikkpap)<br>ALU DEV TEAM · Ingénieur civil &amp; développeur d’outils pour ordinateur et mobile<br>Ptolemaïda, Grèce", "Page du projet &amp; mises à jour", "Autres applications", "Version"),
+    'de': ("Scannen in PDF, JPG, Word und OpenDocument mit {brands}-Scannern, mit OCR, Übersetzung, Senden ans Handy und einem Statuslicht, das zeigt, wenn jemand anderes im Netzwerk den Scanner benutzt.", "<b>Entwickelt von Nikolaos K. Paridis</b> (nikkpap)<br>ALU DEV TEAM · Bauingenieur &amp; Entwickler von Desktop- und Mobil-Tools<br>Ptolemaida, Griechenland", "Projektseite &amp; Updates", "Weitere Apps", "Version"),
+    'it': ("Acquisisci in PDF, JPG, Word e OpenDocument dagli scanner {brands}, con OCR, traduzione, invio al telefono e una spia che mostra quando qualcun altro in rete usa lo scanner.", "<b>Realizzato da Nikolaos K. Paridis</b> (nikkpap)<br>ALU DEV TEAM · Ingegnere civile &amp; sviluppatore di strumenti desktop e mobile<br>Ptolemaida, Grecia", "Pagina del progetto &amp; aggiornamenti", "Altre app", "Versione"),
+    'es': ("Escanea a PDF, JPG, Word y OpenDocument desde escáneres {brands}, con OCR, traducción, envío al móvil y una luz que indica cuándo otra persona de la red está usando el escáner.", "<b>Creado por Nikolaos K. Paridis</b> (nikkpap)<br>ALU DEV TEAM · Ingeniero civil &amp; desarrollador de herramientas de escritorio y móviles<br>Ptolemaida, Grecia", "Página del proyecto &amp; actualizaciones", "Más apps", "Versión"),
+    'ro': ("Scanare în PDF, JPG, Word și OpenDocument de pe scannere {brands}, cu OCR, traducere, trimitere pe telefon și o lumină care arată când altcineva din rețea folosește scannerul.", "<b>Creat de Nikolaos K. Paridis</b> (nikkpap)<br>ALU DEV TEAM · Inginer constructor &amp; dezvoltator de aplicații desktop și mobile<br>Ptolemaida, Grecia", "Pagina proiectului &amp; actualizări", "Mai multe aplicații", "Versiune"),
+    'cs': ("Skenování do PDF, JPG, Wordu a OpenDocumentu ze skenerů {brands}, s OCR, překladem, odesíláním do telefonu a kontrolkou, která ukazuje, když skener v síti používá někdo jiný.", "<b>Vytvořil Nikolaos K. Paridis</b> (nikkpap)<br>ALU DEV TEAM · Stavební inženýr &amp; vývojář aplikací pro počítač a mobil<br>Ptolemaida, Řecko", "Stránka projektu &amp; aktualizace", "Další aplikace", "Verze"),
+    'ru': ("Сканирование в PDF, JPG, Word и OpenDocument со сканеров {brands}, с OCR, переводом, отправкой на телефон и индикатором, который показывает, когда сканером пользуется кто-то другой в сети.", "<b>Автор: Николаос К. Паридис</b> (nikkpap)<br>ALU DEV TEAM · Инженер-строитель &amp; разработчик приложений для ПК и телефона<br>Птолемаида, Греция", "Страница проекта &amp; обновления", "Другие приложения", "Версия"),
+    'ja': ("{brands} のスキャナーから PDF、JPG、Word、OpenDocument にスキャン。OCR、翻訳、スマートフォンへの送信、ネットワーク上で他の人がスキャナーを使っているときに分かる状態ランプ付き。", "<b>制作: Nikolaos K. Paridis</b> (nikkpap)<br>ALU DEV TEAM · 土木技術者 &amp; デスクトップ／モバイルツール開発者<br>ギリシャ、プトレマイダ", "プロジェクトページ &amp; アップデート", "ほかのアプリ", "バージョン"),
+    'zh': ("从 {brands} 扫描仪扫描为 PDF、JPG、Word 和 OpenDocument，支持 OCR、翻译、发送到手机，以及显示网络上是否有其他人正在使用扫描仪的状态指示灯。", "<b>作者：Nikolaos K. Paridis</b> (nikkpap)<br>ALU DEV TEAM · 土木工程师 &amp; 桌面与移动工具开发者<br>希腊托勒迈达", "项目页面 &amp; 更新", "更多应用", "版本"),
+}  # blurb, maker, project, more, version
 
 UPDATE_HOSTS = ("github.com", "api.github.com", "objects.githubusercontent.com",
                 "release-assets.githubusercontent.com", "github-releases.githubusercontent.com")
@@ -1897,6 +2311,15 @@ def apply_theme(mode):
 UI_LANG = "en"
 
 GR = {
+    "{phone} (browser)": "{phone} (browser)",
+    "AirDrop":
+        "AirDrop",
+    "Send with AirDrop to an iPhone, iPad or Mac nearby":
+        "Αποστολή με AirDrop σε κοντινό iPhone, iPad ή Mac",
+    "AirDrop is open: choose the iPhone or Mac.":
+        "Το AirDrop άνοιξε: διάλεξε το iPhone ή το Mac.",
+    "AirDrop is not available on this Mac. Turn on Wi-Fi and Bluetooth.":
+        "Το AirDrop δεν είναι διαθέσιμο σε αυτό το Mac. Άνοιξε το Wi-Fi και το Bluetooth.",
     "So that your phone can send to this computer, Windows Firewall must let it in.\n\nAllow it now? Windows asks for permission once (only phones on your own network, only the ports of {app}).":
         "Για να μπορεί το κινητό να στέλνει σε αυτόν τον υπολογιστή, πρέπει να το επιτρέψει το Τείχος προστασίας των Windows.\n\nΝα επιτραπεί τώρα; Τα Windows ζητούν άδεια μία φορά (μόνο για κινητά του δικού σου δικτύου, μόνο στις θύρες του {app}).",
     "Waiting for Windows permission (firewall)…":
@@ -2259,11 +2682,5563 @@ LANG_NAMES = {  # code: (English, Greek, tesseract code)
     "sq": ("Albanian", "Αλβανικά", "sqi"), "sr": ("Serbian", "Σερβικά", "srp"),
     "tr": ("Turkish", "Τουρκικά", "tur"), "pl": ("Polish", "Πολωνικά", "pol"),
     "ar": ("Arabic", "Αραβικά", "ara"), "zh-CN": ("Chinese", "Κινεζικά", "chi_sim"),
+    "cs": ("Czech", "Τσεχικά", "ces"), "ja": ("Japanese", "Ιαπωνικά", "jpn"),
 }
 
 
+# Other interface languages (keys are the English texts, like GR above).
+UI_FR = {
+    "{phone} (browser)": "{phone} (navigateur)",
+    "AirDrop":
+        "AirDrop",
+    "Send with AirDrop to an iPhone, iPad or Mac nearby":
+        "Envoyer avec AirDrop vers un iPhone, iPad ou Mac à proximité",
+    "AirDrop is open: choose the iPhone or Mac.":
+        "AirDrop est ouvert : choisissez l’iPhone ou le Mac.",
+    "AirDrop is not available on this Mac. Turn on Wi-Fi and Bluetooth.":
+        "AirDrop n’est pas disponible sur ce Mac. Activez le Wi-Fi et le Bluetooth.",
+    "So that your phone can send to this computer, Windows Firewall must let it in.\n\nAllow it now? Windows asks for permission once (only phones on your own network, only the ports of {app}).":
+        "Pour que votre téléphone puisse envoyer des fichiers à cet ordinateur, le pare-feu Windows doit l’autoriser.\n\nL’autoriser maintenant ? Windows demande l’autorisation une seule fois (uniquement les téléphones de votre réseau, uniquement les ports de {app}).",
+    "Waiting for Windows permission (firewall)…":
+        "En attente de l’autorisation de Windows (pare-feu)…",
+    "✓ Windows Firewall lets your phone in now.":
+        "✓ Le pare-feu Windows laisse maintenant passer votre téléphone.",
+    "Windows Firewall was not changed, so the phone may not be able to send to this computer.":
+        "Le pare-feu Windows n’a pas été modifié : le téléphone ne pourra peut-être pas envoyer de fichiers à cet ordinateur.",
+    "LocalSend for the phone":
+        "LocalSend pour le téléphone",
+    "Trying Epson's other download server…":
+        "Essai avec l’autre serveur de téléchargement d’Epson…",
+    "{name} answers on the network ({ip}), but its scanner driver is not installed.":
+        "{name} répond sur le réseau ({ip}), mais son pilote de scanner n’est pas installé.",
+    "Scanner driver missing":
+        "Pilote de scanner manquant",
+    "{name} was found on the network ({ip}), but its scanner driver is not installed, so the app cannot scan with it.\n\nInstall the official {label} now? It is downloaded and installed automatically (a few minutes; Windows may ask for permission).":
+        "{name} a été trouvé sur le réseau ({ip}), mais son pilote de scanner n’est pas installé : l’application ne peut donc pas numériser avec.\n\nInstaller maintenant le pilote officiel {label} ? Il est téléchargé et installé automatiquement (quelques minutes ; Windows peut demander l’autorisation).",
+    "Phone":
+        "Téléphone",
+    "Send to your phone or receive photos from it, on the same Wi-Fi (LocalSend app or QR code)":
+        "Envoyer vers votre téléphone ou en recevoir des photos, sur le même Wi-Fi (application LocalSend ou code QR)",
+    "Send scans to your phone and receive photos from it, on the same Wi-Fi.":
+        "Envoyez vos numérisations vers votre téléphone et recevez-en des photos, sur le même Wi-Fi.",
+    "Receiving from the phone":
+        "Réception depuis le téléphone",
+    "Keep receiving on while the app is open":
+        "Garder la réception active tant que l’application est ouverte",
+    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
+        "Si cette option est désactivée, la réception s’ouvre pour {minutes} minutes à chaque appui sur Téléphone.",
+    "Phone photos":
+        "Photos du téléphone",
+    "Just save them in the scans folder":
+        "Les enregistrer simplement dans le dossier des numérisations",
+    "Make a PDF, like a scan (OCR, Word)":
+        "En faire un PDF, comme une numérisation (OCR, Word)",
+    "Name on the phone":
+        "Nom sur le téléphone",
+    "How it works":
+        "Fonctionnement",
+    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. Téléphone et ordinateur sur le même Wi-Fi.\n2. Installez l’application gratuite LocalSend sur le téléphone, ou scannez simplement le code QR.\n3. Appuyez sur Téléphone, à côté d’Aperçu, choisissez le téléphone puis Envoyer.\n4. Pour envoyer depuis le téléphone : dans LocalSend, choisissez « {name} », ou utilisez la page du code QR.",
+    "Get LocalSend":
+        "Obtenir LocalSend",
+    "Idle · making a PDF from phone photos":
+        "Inactif · création d’un PDF à partir des photos du téléphone",
+    "✓ Made {file} from {count} phone photo(s)":
+        "✓ {file} créé à partir de {count} photo(s) du téléphone",
+    "Windows may now ask whether {app} can use the network.\n\nTick “Private networks” and click Allow, so your phone can reach this computer.":
+        "Windows va peut-être demander si {app} peut utiliser le réseau.\n\nCochez « Réseaux privés » et cliquez sur Autoriser, pour que votre téléphone puisse joindre cet ordinateur.",
+    "The phone connection could not start. Another program may be using the network ports {ports}.":
+        "La connexion au téléphone n’a pas pu démarrer. Un autre programme utilise peut-être les ports réseau {ports}.",
+    "Receiving is off. Press Phone to open it again.":
+        "La réception est désactivée. Appuyez sur Téléphone pour la rouvrir.",
+    "Receiving is on: the phone can send files to “{name}”.":
+        "La réception est active : le téléphone peut envoyer des fichiers à « {name} ».",
+    "Receiving is on for {time}: the phone can send files to “{name}”.":
+        "La réception est active pendant {time} : le téléphone peut envoyer des fichiers à « {name} ».",
+    "… and {count} more":
+        "… et {count} de plus",
+    "Files from a phone":
+        "Fichiers d’un téléphone",
+    "“{sender}” wants to send {count} file(s):":
+        "« {sender} » veut envoyer {count} fichier(s) :",
+    "They will be saved in {folder}.":
+        "Ils seront enregistrés dans {folder}.",
+    "Accept":
+        "Accepter",
+    "Decline":
+        "Refuser",
+    "Receiving files from {sender}…":
+        "Réception des fichiers de {sender}…",
+    "✓ Received {count} file(s) from {sender} in {folder}":
+        "✓ {count} fichier(s) reçu(s) de {sender} dans {folder}",
+    "The photos were saved as they are, because a scan is running.":
+        "Les photos ont été enregistrées telles quelles, car une numérisation est en cours.",
+    "Making a PDF from {count} phone photo(s)…":
+        "Création d’un PDF à partir de {count} photo(s) du téléphone…",
+    "This link has expired. Scan the QR code again.":
+        "Ce lien a expiré. Scannez à nouveau le code QR.",
+    "No scan yet. Scan something first, then reload this page.":
+        "Aucune numérisation pour l’instant. Numérisez d’abord, puis rechargez cette page.",
+    "Waiting for the computer to accept…":
+        "En attente de l’acceptation par l’ordinateur…",
+    "The computer declined the files.":
+        "L’ordinateur a refusé les fichiers.",
+    "The computer is receiving other files. Try again in a moment.":
+        "L’ordinateur reçoit d’autres fichiers. Réessayez dans un instant.",
+    "Sending failed. Check that the phone is on the same Wi-Fi and try again.":
+        "L’envoi a échoué. Vérifiez que le téléphone est sur le même Wi-Fi et réessayez.",
+    "Sending {name}…":
+        "Envoi de {name}…",
+    "✓ Sent! The files are on the computer.":
+        "✓ Envoyé ! Les fichiers sont sur l’ordinateur.",
+    "1 · Get the scan on this phone":
+        "1 · Récupérer la numérisation sur ce téléphone",
+    "Reload":
+        "Recharger",
+    "2 · Send photos or files to the computer":
+        "2 · Envoyer des photos ou des fichiers à l’ordinateur",
+    "Take a photo or choose files":
+        "Prendre une photo ou choisir des fichiers",
+    "Send to your phone":
+        "Envoyer vers votre téléphone",
+    "Phone and computer must be on the same Wi-Fi.":
+        "Le téléphone et l’ordinateur doivent être sur le même Wi-Fi.",
+    "Choose other files…":
+        "Choisir d’autres fichiers…",
+    "Phones with LocalSend":
+        "Téléphones avec LocalSend",
+    "Send":
+        "Envoyer",
+    "No LocalSend? Scan this":
+        "Pas de LocalSend ? Scannez ceci",
+    "Point the phone camera at the code. A page opens where you can download the scan and send photos to this computer.":
+        "Pointez l’appareil photo du téléphone vers le code. Une page s’ouvre pour télécharger la numérisation et envoyer des photos à cet ordinateur.",
+    "QR code not available.":
+        "Code QR non disponible.",
+    "To send: {names}  ({size})":
+        "À envoyer : {names}  ({size})",
+    "Nothing to send yet. Scan first, or choose files.":
+        "Rien à envoyer pour l’instant. Numérisez d’abord, ou choisissez des fichiers.",
+    "Choose files for the phone":
+        "Choisir des fichiers pour le téléphone",
+    "Looking for phones… Open LocalSend on the phone.":
+        "Recherche de téléphones… Ouvrez LocalSend sur le téléphone.",
+    "No phone found.\n1. Is the phone on the same Wi-Fi?\n2. Open the LocalSend app on the phone (free, Play Store / App Store).\n3. Or simply scan the QR code on the right.":
+        "Aucun téléphone trouvé.\n1. Le téléphone est-il sur le même Wi-Fi ?\n2. Ouvrez l’application LocalSend sur le téléphone (gratuite, Play Store / App Store).\n3. Ou scannez simplement le code QR à droite.",
+    "Waiting for {phone} to accept… Tap Accept on the phone.":
+        "En attente de l’acceptation par {phone}… Appuyez sur Accepter sur le téléphone.",
+    "Sending to {phone}… {value}%":
+        "Envoi vers {phone}… {value} %",
+    "{phone} declined the files.":
+        "{phone} a refusé les fichiers.",
+    "{phone} is busy with another transfer. Try again in a moment.":
+        "{phone} est occupé par un autre transfert. Réessayez dans un instant.",
+    "{phone} asks for a PIN. Turn off the PIN in LocalSend settings on the phone.":
+        "{phone} demande un code PIN. Désactivez le PIN dans les paramètres de LocalSend sur le téléphone.",
+    "Could not reach {phone}. Is LocalSend open and on the same Wi-Fi?":
+        "Impossible de joindre {phone}. LocalSend est-il ouvert et sur le même Wi-Fi ?",
+    "Sending cancelled.":
+        "Envoi annulé.",
+    "✓ Sent {count} file(s) to {phone}.":
+        "✓ {count} fichier(s) envoyé(s) à {phone}.",
+    "Sending failed. {error}":
+        "L’envoi a échoué. {error}",
+    "Also save an editable document (text from OCR)":
+        "Enregistrer aussi un document modifiable (texte issu de l’OCR)",
+    "Document":
+        "Document",
+    "Word (.docx) · Microsoft Word":
+        "Word (.docx) · Microsoft Word",
+    "OpenDocument (.odt) · LibreOffice on Mac / Linux":
+        "OpenDocument (.odt) · LibreOffice sur Mac / Linux",
+    "Word export needs python-docx. Close and reopen the app to install it.":
+        "L’export Word nécessite python-docx. Fermez et rouvrez l’application pour l’installer.",
+    "What to save, the paper and where the files go.":
+        "Quoi enregistrer, le papier et l’emplacement des fichiers.",
+    "Recognise text in your scans and translate it.":
+        "Reconnaître le texte de vos numérisations et le traduire.",
+    "Language, appearance and updates.":
+        "Langue, apparence et mises à jour.",
+    "Output":
+        "Sortie",
+    "Paper":
+        "Papier",
+    "Saving":
+        "Enregistrement",
+    "Text recognition (OCR)":
+        "Reconnaissance de texte (OCR)",
+    "Appearance":
+        "Apparence",
+    "Reset":
+        "Réinitialiser",
+    "Settings":
+        "Paramètres",
+    "Help":
+        "Aide",
+    "Ready":
+        "Prêt",
+    "Idle":
+        "Inactif",
+    "Scan":
+        "Numériser",
+    "Preview":
+        "Aperçu",
+    "Text":
+        "Texte",
+    "Open last":
+        "Dernier fichier",
+    "Open folder":
+        "Dossier",
+    "Cancel":
+        "Annuler",
+    "Stop search":
+        "Arrêter la recherche",
+    "Search again":
+        "Rechercher à nouveau",
+    "Change…":
+        "Modifier…",
+    "Starting…":
+        "Démarrage…",
+    "Looking for scanners…":
+        "Recherche de scanners…",
+    "Checking every driver at the same time.":
+        "Vérification de tous les pilotes en même temps.",
+    "Connected to {name}":
+        "Connecté à {name}",
+    "via {driver}":
+        "via {driver}",
+    "{brand} at {ip}":
+        "{brand} à {ip}",
+    "{count} more in Settings":
+        "{count} autre(s) dans les Paramètres",
+    "No scanner connected":
+        "Aucun scanner connecté",
+    "Turn the scanner on, check the USB cable or Wi-Fi, then click Search again.":
+        "Allumez le scanner, vérifiez le câble USB ou le Wi-Fi, puis cliquez sur Rechercher à nouveau.",
+    "saves to {folder}":
+        "enregistre dans {folder}",
+    "asks for a file name":
+        "demande un nom de fichier",
+    "OCR":
+        "OCR",
+    "OCR off":
+        "OCR désactivé",
+    "translate → {lang}":
+        "traduire → {lang}",
+    "Scan and save in the format chosen in Settings (Ctrl+S)":
+        "Numériser et enregistrer au format choisi dans les Paramètres (Ctrl+S)",
+    "Quick low-resolution look at the flatbed (Ctrl+P)":
+        "Aperçu rapide basse résolution de la vitre (Ctrl+P)",
+    "Recognised text and translation of the last scan (Ctrl+T)":
+        "Texte reconnu et traduction de la dernière numérisation (Ctrl+T)",
+    "Open the last scanned file":
+        "Ouvrir le dernier fichier numérisé",
+    "Open the folder with your scans":
+        "Ouvrir le dossier de vos numérisations",
+    "Stop the scan or search (Esc)":
+        "Arrêter la numérisation ou la recherche (Échap)",
+    "Look for scanners again (F5)":
+        "Rechercher à nouveau les scanners (F5)",
+    "Choose another scanner or change scan settings":
+        "Choisir un autre scanner ou modifier les paramètres de numérisation",
+    "Scanner, scanning, text and appearance settings (Ctrl+,)":
+        "Paramètres du scanner, de la numérisation, du texte et de l’apparence (Ctrl+,)",
+    "Quick guide":
+        "Guide rapide",
+    "Check for updates…":
+        "Rechercher des mises à jour…",
+    "Project page on GitHub":
+        "Page du projet sur GitHub",
+    "About {app}":
+        "À propos de {app}",
+    "Update to {version}…":
+        "Mettre à jour vers {version}…",
+    "In use · scanning on this PC":
+        "Occupé · numérisation sur ce PC",
+    "In use by {who}":
+        "Utilisé par {who}",
+    "{user} on {host}":
+        "{user} sur {host}",
+    "Started at {time}. Wait until the light turns green.":
+        "Commencé à {time}. Attendez que le voyant passe au vert.",
+    "In use · scanner is busy":
+        "Occupé · le scanner travaille",
+    "The scanner reports that it is scanning right now.":
+        "Le scanner indique qu’il numérise en ce moment.",
+    "Idle · searching…":
+        "Inactif · recherche…",
+    "Idle · no scanner":
+        "Inactif · aucun scanner",
+    "No scanner is connected yet.":
+        "Aucun scanner n’est encore connecté.",
+    "Idle · scanner on standby":
+        "Inactif · scanner en veille",
+    "The scanner reports that it is stopped or offline.":
+        "Le scanner indique qu’il est arrêté ou hors ligne.",
+    "The scanner is free. You can scan.":
+        "Le scanner est libre. Vous pouvez numériser.",
+    "Idle · installing OCR…":
+        "Inactif · installation de l’OCR…",
+    "The scanner is free now. You can scan.":
+        "Le scanner est maintenant libre. Vous pouvez numériser.",
+    "Scanner in use":
+        "Scanner occupé",
+    "The scanner is in use right now.\n\n{text}.\n{tip}\n\nPlease wait until the light at the top turns green, then try again.\nThis app will beep when the scanner is free.":
+        "Le scanner est utilisé en ce moment.\n\n{text}.\n{tip}\n\nAttendez que le voyant en haut passe au vert, puis réessayez.\nL’application émettra un bip quand le scanner sera libre.",
+    "Scanner in use: {text}. Wait for the green light.":
+        "Scanner occupé : {text}. Attendez le voyant vert.",
+    "Scanner":
+        "Scanner",
+    "Scanning":
+        "Numérisation",
+    "Text & translation":
+        "Texte et traduction",
+    "General":
+        "Général",
+    "Done":
+        "Terminé",
+    "Driver":
+        "Pilote",
+    "Model":
+        "Modèle",
+    "Network":
+        "Réseau",
+    "Auto (all drivers)":
+        "Auto (tous les pilotes)",
+    "No scanner found yet":
+        "Aucun scanner trouvé pour l’instant",
+    "Refresh":
+        "Actualiser",
+    "Driver setup":
+        "Installer le pilote",
+    "Find on network":
+        "Rechercher sur le réseau",
+    "Web panel":
+        "Panneau web",
+    "Find your model’s driver":
+        "Trouver le pilote de votre modèle",
+    "No network reply yet":
+        "Pas encore de réponse du réseau",
+    "Everything here is found automatically. Change it only if the wrong scanner is chosen.":
+        "Tout ici est détecté automatiquement. Ne le modifiez que si le mauvais scanner est choisi.",
+    "Save as":
+        "Enregistrer en",
+    "one PDF with every page":
+        "un PDF avec toutes les pages",
+    "one JPG image per page":
+        "une image JPG par page",
+    "the PDF and the JPG images from one scan":
+        "le PDF et les images JPG d’une même numérisation",
+    "Paper source":
+        "Source du papier",
+    "Auto · feeder if loaded, else flatbed":
+        "Auto · chargeur s’il contient du papier, sinon vitre",
+    "Flatbed (glass)":
+        "Vitre (à plat)",
+    "Document feeder":
+        "Chargeur de documents",
+    "Document feeder · both sides":
+        "Chargeur de documents · recto verso",
+    "Paper size":
+        "Format du papier",
+    "Resolution":
+        "Résolution",
+    "150 dpi · fast, small file":
+        "150 dpi · rapide, petit fichier",
+    "300 dpi · recommended":
+        "300 dpi · recommandé",
+    "600 dpi · fine detail":
+        "600 dpi · détails fins",
+    "Colour":
+        "Couleur",
+    "Greyscale":
+        "Niveaux de gris",
+    "Black and white":
+        "Noir et blanc",
+    "Save to":
+        "Enregistrer dans",
+    "Browse…":
+        "Parcourir…",
+    "Ask for a file name every time":
+        "Demander un nom de fichier à chaque fois",
+    "Open the file after scanning":
+        "Ouvrir le fichier après la numérisation",
+    "Auto source":
+        "Source auto",
+    "Flatbed":
+        "Vitre",
+    "Feeder":
+        "Chargeur",
+    "Feeder · 2 sides":
+        "Chargeur · recto verso",
+    "Make PDFs searchable with OCR (text recognition)":
+        "Rendre les PDF consultables avec l’OCR (reconnaissance de texte)",
+    "OCR languages":
+        "Langues de l’OCR",
+    "Auto · English + Greek + your system language":
+        "Auto · anglais + grec + la langue de votre système",
+    "Choose languages":
+        "Choisir les langues",
+    "Languages download automatically the first time they are used.":
+        "Les langues se téléchargent automatiquement à la première utilisation.",
+    "Also save the text as a .txt file":
+        "Enregistrer aussi le texte dans un fichier .txt",
+    "Translate automatically to":
+        "Traduire automatiquement en",
+    "Off":
+        "Désactivé",
+    "Translation service":
+        "Service de traduction",
+    "Google Translate (free)":
+        "Google Traduction (gratuit)",
+    "MyMemory (free)":
+        "MyMemory (gratuit)",
+    "LibreTranslate (your server)":
+        "LibreTranslate (votre serveur)",
+    "LibreTranslate server":
+        "Serveur LibreTranslate",
+    "API key (optional)":
+        "Clé API (facultative)",
+    "Free services need internet. Google falls back to MyMemory if it fails.":
+        "Les services gratuits nécessitent Internet. Google bascule sur MyMemory en cas d’échec.",
+    "Theme":
+        "Thème",
+    "Auto · follow Windows / system":
+        "Auto · suivre Windows / le système",
+    "Light":
+        "Clair",
+    "Dark":
+        "Sombre",
+    "Language":
+        "Langue",
+    "Auto · system language":
+        "Auto · langue du système",
+    "Updates":
+        "Mises à jour",
+    "Check for updates automatically":
+        "Rechercher automatiquement les mises à jour",
+    "Check now":
+        "Vérifier maintenant",
+    "Reset everything to Auto":
+        "Tout remettre en Auto",
+    "All settings are back to Auto.":
+        "Tous les paramètres sont revenus en Auto.",
+    "Restart to change the language?":
+        "Redémarrer pour changer de langue ?",
+    "The new language is used after a restart. Restart now?":
+        "La nouvelle langue est utilisée après un redémarrage. Redémarrer maintenant ?",
+    "Save scans to":
+        "Enregistrer les numérisations dans",
+    "Recognised text":
+        "Texte reconnu",
+    "Translation":
+        "Traduction",
+    "Translate":
+        "Traduire",
+    "From":
+        "De",
+    "To":
+        "Vers",
+    "Auto-detect":
+        "Détection automatique",
+    "Copy":
+        "Copier",
+    "Save .txt":
+        "Enregistrer .txt",
+    "Close":
+        "Fermer",
+    "Copied.":
+        "Copié.",
+    "Detected language: {lang}":
+        "Langue détectée : {lang}",
+    "Translating with {engine}…":
+        "Traduction avec {engine}…",
+    "Translated with {engine}. Detected: {lang}.":
+        "Traduit avec {engine}. Détecté : {lang}.",
+    "Translation failed. {error}":
+        "La traduction a échoué. {error}",
+    "Saved {name}":
+        "{name} enregistré",
+    "No text yet. Turn on OCR in Settings › Text & translation, then scan again.":
+        "Pas encore de texte. Activez l’OCR dans Paramètres › Texte et traduction, puis numérisez à nouveau.",
+    "Text of {name}":
+        "Texte de {name}",
+    "Looking for scanners ({drivers})…":
+        "Recherche de scanners ({drivers})…",
+    "Looking for scanners… {count} found so far.":
+        "Recherche de scanners… {count} trouvé(s) jusqu’ici.",
+    "Ready. Load the paper and click Scan.":
+        "Prêt. Placez le papier et cliquez sur Numériser.",
+    "Search stopped. Click Search again when you are ready.":
+        "Recherche arrêtée. Cliquez sur Rechercher à nouveau quand vous êtes prêt.",
+    "No scanners found. Check the cable or Wi-Fi and the installed driver (Settings › Scanner › Driver setup).":
+        "Aucun scanner trouvé. Vérifiez le câble ou le Wi-Fi et le pilote installé (Paramètres › Scanner › Installer le pilote).",
+    "The NAPS2 scanner engine was not found. Close and reopen the app to install it automatically.":
+        "Le moteur de numérisation NAPS2 est introuvable. Fermez et rouvrez l’application pour l’installer automatiquement.",
+    "Scanning a quick low-resolution preview…":
+        "Aperçu rapide basse résolution en cours…",
+    "Check the page placement, then scan at your chosen resolution.":
+        "Vérifiez la position de la page, puis numérisez à la résolution choisie.",
+    "Flatbed preview":
+        "Aperçu de la vitre",
+    "Back":
+        "Retour",
+    "Preview ready.":
+        "Aperçu prêt.",
+    "No preview was produced. Check the flatbed and scanner connection.":
+        "Aucun aperçu n’a été produit. Vérifiez la vitre et la connexion du scanner.",
+    "Scanning from {where}… Keep the scanner on until the file is saved.":
+        "Numérisation depuis {where}… Laissez le scanner allumé jusqu’à l’enregistrement du fichier.",
+    "the flatbed":
+        "la vitre",
+    "the document feeder":
+        "le chargeur de documents",
+    "the document feeder (both sides)":
+        "le chargeur de documents (recto verso)",
+    " Recognising text (OCR)…":
+        " Reconnaissance du texte (OCR)…",
+    "Downloading OCR languages ({langs}). One time only…":
+        "Téléchargement des langues de l’OCR ({langs}). Une seule fois…",
+    "OCR languages could not be installed ({langs}). Scanning without OCR.":
+        "Les langues de l’OCR n’ont pas pu être installées ({langs}). Numérisation sans OCR.",
+    "Scan cancelled.":
+        "Numérisation annulée.",
+    "The scanner is busy. Someone else may be using it. Wait a moment, then try again.":
+        "Le scanner est occupé. Quelqu’un d’autre l’utilise peut-être. Patientez un instant, puis réessayez.",
+    "Windows could not reach the Canon scanner. Turn it on, make sure it is on the same Wi-Fi, and check it in Canon IJ Scan Utility, then retry.":
+        "Windows n’a pas pu joindre le scanner Canon. Allumez-le, vérifiez qu’il est sur le même Wi-Fi et contrôlez-le dans Canon IJ Scan Utility, puis réessayez.",
+    "Epson Scan 2 could not open the scanner. In Epson Scan 2 Utility, add or test its network address, then retry.":
+        "Epson Scan 2 n’a pas pu ouvrir le scanner. Dans Epson Scan 2 Utility, ajoutez ou testez son adresse réseau, puis réessayez.",
+    "Scanner operation failed. {detail}":
+        "L’opération du scanner a échoué. {detail}",
+    "No pages were scanned. Check the paper and the scanner connection.":
+        "Aucune page n’a été numérisée. Vérifiez le papier et la connexion du scanner.",
+    "Could not save the scan. {error}":
+        "Impossible d’enregistrer la numérisation. {error}",
+    "The scan was kept as {path}":
+        "La numérisation a été conservée sous {path}",
+    "✓ Saved {files} in {folder}":
+        "✓ {files} enregistré(s) dans {folder}",
+    "{count} JPG pages":
+        "{count} pages JPG",
+    "text":
+        "texte",
+    "Translating the text to {lang}…":
+        "Traduction du texte en {lang}…",
+    "✓ Translation saved: {name}":
+        "✓ Traduction enregistrée : {name}",
+    "Could not start NAPS2. {error}":
+        "Impossible de démarrer NAPS2. {error}",
+    "Could not create {folder}. {error}\nChoose another folder in Settings › Scanning.":
+        "Impossible de créer {folder}. {error}\nChoisissez un autre dossier dans Paramètres › Numérisation.",
+    "Save scan":
+        "Enregistrer la numérisation",
+    "Scan in progress":
+        "Numérisation en cours",
+    "A scan is running. Cancel it and close the app?":
+        "Une numérisation est en cours. L’annuler et fermer l’application ?",
+    "JPG export needs PyMuPDF. Close and reopen the app to install it.":
+        "L’export JPG nécessite PyMuPDF. Fermez et rouvrez l’application pour l’installer.",
+    "Checking GitHub for a newer version…":
+        "Recherche d’une version plus récente sur GitHub…",
+    "Could not check for updates. {error}":
+        "Impossible de vérifier les mises à jour. {error}",
+    "You have the latest version (v{version}).":
+        "Vous avez la dernière version (v{version}).",
+    "Update available":
+        "Mise à jour disponible",
+    "{app} {version} is available (you have v{current}).\n\nWhat's new:\n{notes}\n\nDownload and install it now?":
+        "{app} {version} est disponible (vous avez la v{current}).\n\nNouveautés :\n{notes}\n\nLa télécharger et l’installer maintenant ?",
+    "No release notes.":
+        "Pas de notes de version.",
+    "Update {version} is waiting in Help.":
+        "La mise à jour {version} vous attend dans Aide.",
+    "Finish the scan first, then install the update from Help.":
+        "Terminez d’abord la numérisation, puis installez la mise à jour depuis Aide.",
+    "Downloading {version} from GitHub…":
+        "Téléchargement de {version} depuis GitHub…",
+    "Update failed. {error}":
+        "La mise à jour a échoué. {error}",
+    "macOS is running the app from a temporary read-only copy. Drag What the Scan into Applications, open it from there, then update again.":
+        "macOS exécute l’application depuis une copie temporaire en lecture seule. Faites glisser What the Scan dans Applications, ouvrez-la depuis là, puis mettez à jour à nouveau.",
+    "The app's folder can't be written to. Move the app to a folder you own (or Applications) and update again.":
+        "Le dossier de l’application n’est pas accessible en écriture. Déplacez l’application dans un dossier qui vous appartient (ou dans Applications) et mettez à jour à nouveau.",
+    "Update failed":
+        "Échec de la mise à jour",
+    "{error}\n\nOpen the release page to download it by hand?":
+        "{error}\n\nOuvrir la page de la version pour la télécharger manuellement ?",
+    "Updated to {version}. Restarting…":
+        "Mis à jour vers {version}. Redémarrage…",
+    "Choose a model to find its driver.":
+        "Choisissez un modèle pour trouver son pilote.",
+    "Install driver":
+        "Installer le pilote",
+    "Download and install the official {label} now?\n\nWindows may ask for permission. Choose No to open the support page instead.":
+        "Télécharger et installer maintenant le pilote officiel {label} ?\n\nWindows peut demander l’autorisation. Choisissez Non pour ouvrir plutôt la page d’assistance.",
+    "Preparing the official {label} installer…":
+        "Préparation du programme d’installation officiel {label}…",
+    "{label} installed. Looking for scanners…":
+        "{label} installé. Recherche de scanners…",
+    "Driver setup failed. {error}\nThe support page is opening so you can install it by hand.":
+        "L’installation du pilote a échoué. {error}\nLa page d’assistance s’ouvre pour que vous puissiez l’installer manuellement.",
+    "Searching the local network for scanners (Epson, Canon, HP, AirPrint)…":
+        "Recherche de scanners sur le réseau local (Epson, Canon, HP, AirPrint)…",
+    "answered as a network (eSCL) scanner ✓":
+        "a répondu comme scanner réseau (eSCL) ✓",
+    "This scanner has: {sources}":
+        "Ce scanner dispose de : {sources}",
+    "Network discovery failed. {error}":
+        "La recherche sur le réseau a échoué. {error}",
+    "Select your scanner's network address.":
+        "Sélectionnez l’adresse réseau de votre scanner.",
+    "No scanner replied on this local network.":
+        "Aucun scanner n’a répondu sur ce réseau local.",
+    "answered as a Canon scanner ✓":
+        "a répondu comme scanner Canon ✓",
+    "responds on the scanner port ✓":
+        "répond sur le port du scanner ✓",
+    "did not respond on the scanner port":
+        "n’a pas répondu sur le port du scanner",
+    "{brand} {ip} {state}. Scanning uses the driver chosen above.":
+        "{brand} {ip} {state}. La numérisation utilise le pilote choisi ci-dessus.",
+}
+
+UI_DE = {
+    "{phone} (browser)": "{phone} (Browser)",
+    "AirDrop":
+        "AirDrop",
+    "Send with AirDrop to an iPhone, iPad or Mac nearby":
+        "Mit AirDrop an ein iPhone, iPad oder einen Mac in der Nähe senden",
+    "AirDrop is open: choose the iPhone or Mac.":
+        "AirDrop ist geöffnet: Wählen Sie das iPhone oder den Mac.",
+    "AirDrop is not available on this Mac. Turn on Wi-Fi and Bluetooth.":
+        "AirDrop ist auf diesem Mac nicht verfügbar. Schalten Sie WLAN und Bluetooth ein.",
+    "So that your phone can send to this computer, Windows Firewall must let it in.\n\nAllow it now? Windows asks for permission once (only phones on your own network, only the ports of {app}).":
+        "Damit Ihr Handy Dateien an diesen Computer senden kann, muss die Windows-Firewall es zulassen.\n\nJetzt zulassen? Windows fragt einmal nach der Berechtigung (nur Handys in Ihrem eigenen Netzwerk, nur die Ports von {app}).",
+    "Waiting for Windows permission (firewall)…":
+        "Warte auf die Windows-Berechtigung (Firewall)…",
+    "✓ Windows Firewall lets your phone in now.":
+        "✓ Die Windows-Firewall lässt Ihr Handy jetzt durch.",
+    "Windows Firewall was not changed, so the phone may not be able to send to this computer.":
+        "Die Windows-Firewall wurde nicht geändert, daher kann das Handy eventuell keine Dateien an diesen Computer senden.",
+    "LocalSend for the phone":
+        "LocalSend fürs Handy",
+    "Trying Epson's other download server…":
+        "Versuche den anderen Download-Server von Epson…",
+    "{name} answers on the network ({ip}), but its scanner driver is not installed.":
+        "{name} antwortet im Netzwerk ({ip}), aber der Scannertreiber ist nicht installiert.",
+    "Scanner driver missing":
+        "Scannertreiber fehlt",
+    "{name} was found on the network ({ip}), but its scanner driver is not installed, so the app cannot scan with it.\n\nInstall the official {label} now? It is downloaded and installed automatically (a few minutes; Windows may ask for permission).":
+        "{name} wurde im Netzwerk gefunden ({ip}), aber der Scannertreiber ist nicht installiert, daher kann die App damit nicht scannen.\n\nDen offiziellen {label} jetzt installieren? Er wird automatisch heruntergeladen und installiert (einige Minuten; Windows fragt eventuell nach der Berechtigung).",
+    "Phone":
+        "Handy",
+    "Send to your phone or receive photos from it, on the same Wi-Fi (LocalSend app or QR code)":
+        "An Ihr Handy senden oder Fotos davon empfangen, im selben WLAN (LocalSend-App oder QR-Code)",
+    "Send scans to your phone and receive photos from it, on the same Wi-Fi.":
+        "Senden Sie Scans an Ihr Handy und empfangen Sie Fotos davon, im selben WLAN.",
+    "Receiving from the phone":
+        "Empfang vom Handy",
+    "Keep receiving on while the app is open":
+        "Empfang eingeschaltet lassen, solange die App geöffnet ist",
+    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
+        "Ist dies aus, wird der Empfang bei jedem Druck auf Handy für {minutes} Minuten geöffnet.",
+    "Phone photos":
+        "Handyfotos",
+    "Just save them in the scans folder":
+        "Nur im Scan-Ordner speichern",
+    "Make a PDF, like a scan (OCR, Word)":
+        "Ein PDF daraus machen, wie ein Scan (OCR, Word)",
+    "Name on the phone":
+        "Name auf dem Handy",
+    "How it works":
+        "So funktioniert es",
+    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. Handy und Computer im selben WLAN.\n2. Installieren Sie die kostenlose LocalSend-App auf dem Handy oder scannen Sie einfach den QR-Code.\n3. Drücken Sie Handy neben Vorschau, wählen Sie das Handy und Senden.\n4. Senden vom Handy: Wählen Sie in LocalSend „{name}“ oder nutzen Sie die QR-Seite.",
+    "Get LocalSend":
+        "LocalSend holen",
+    "Idle · making a PDF from phone photos":
+        "Bereit · erstelle ein PDF aus Handyfotos",
+    "✓ Made {file} from {count} phone photo(s)":
+        "✓ {file} aus {count} Handyfoto(s) erstellt",
+    "Windows may now ask whether {app} can use the network.\n\nTick “Private networks” and click Allow, so your phone can reach this computer.":
+        "Windows fragt jetzt eventuell, ob {app} das Netzwerk nutzen darf.\n\nAktivieren Sie „Private Netzwerke“ und klicken Sie auf Zulassen, damit Ihr Handy diesen Computer erreicht.",
+    "The phone connection could not start. Another program may be using the network ports {ports}.":
+        "Die Handyverbindung konnte nicht starten. Eventuell nutzt ein anderes Programm die Netzwerkports {ports}.",
+    "Receiving is off. Press Phone to open it again.":
+        "Der Empfang ist aus. Drücken Sie Handy, um ihn wieder zu öffnen.",
+    "Receiving is on: the phone can send files to “{name}”.":
+        "Der Empfang ist an: Das Handy kann Dateien an „{name}“ senden.",
+    "Receiving is on for {time}: the phone can send files to “{name}”.":
+        "Der Empfang ist für {time} an: Das Handy kann Dateien an „{name}“ senden.",
+    "… and {count} more":
+        "… und {count} weitere",
+    "Files from a phone":
+        "Dateien von einem Handy",
+    "“{sender}” wants to send {count} file(s):":
+        "„{sender}“ möchte {count} Datei(en) senden:",
+    "They will be saved in {folder}.":
+        "Sie werden in {folder} gespeichert.",
+    "Accept":
+        "Annehmen",
+    "Decline":
+        "Ablehnen",
+    "Receiving files from {sender}…":
+        "Empfange Dateien von {sender}…",
+    "✓ Received {count} file(s) from {sender} in {folder}":
+        "✓ {count} Datei(en) von {sender} in {folder} empfangen",
+    "The photos were saved as they are, because a scan is running.":
+        "Die Fotos wurden unverändert gespeichert, weil gerade ein Scan läuft.",
+    "Making a PDF from {count} phone photo(s)…":
+        "Erstelle ein PDF aus {count} Handyfoto(s)…",
+    "This link has expired. Scan the QR code again.":
+        "Dieser Link ist abgelaufen. Scannen Sie den QR-Code erneut.",
+    "No scan yet. Scan something first, then reload this page.":
+        "Noch kein Scan. Scannen Sie zuerst etwas und laden Sie dann diese Seite neu.",
+    "Waiting for the computer to accept…":
+        "Warte, bis der Computer annimmt…",
+    "The computer declined the files.":
+        "Der Computer hat die Dateien abgelehnt.",
+    "The computer is receiving other files. Try again in a moment.":
+        "Der Computer empfängt gerade andere Dateien. Versuchen Sie es gleich noch einmal.",
+    "Sending failed. Check that the phone is on the same Wi-Fi and try again.":
+        "Senden fehlgeschlagen. Prüfen Sie, ob das Handy im selben WLAN ist, und versuchen Sie es erneut.",
+    "Sending {name}…":
+        "Sende {name}…",
+    "✓ Sent! The files are on the computer.":
+        "✓ Gesendet! Die Dateien sind auf dem Computer.",
+    "1 · Get the scan on this phone":
+        "1 · Den Scan auf dieses Handy holen",
+    "Reload":
+        "Neu laden",
+    "2 · Send photos or files to the computer":
+        "2 · Fotos oder Dateien an den Computer senden",
+    "Take a photo or choose files":
+        "Foto aufnehmen oder Dateien wählen",
+    "Send to your phone":
+        "An Ihr Handy senden",
+    "Phone and computer must be on the same Wi-Fi.":
+        "Handy und Computer müssen im selben WLAN sein.",
+    "Choose other files…":
+        "Andere Dateien wählen…",
+    "Phones with LocalSend":
+        "Handys mit LocalSend",
+    "Send":
+        "Senden",
+    "No LocalSend? Scan this":
+        "Kein LocalSend? Scannen Sie das hier",
+    "Point the phone camera at the code. A page opens where you can download the scan and send photos to this computer.":
+        "Richten Sie die Handykamera auf den Code. Es öffnet sich eine Seite, auf der Sie den Scan herunterladen und Fotos an diesen Computer senden können.",
+    "QR code not available.":
+        "QR-Code nicht verfügbar.",
+    "To send: {names}  ({size})":
+        "Zu senden: {names}  ({size})",
+    "Nothing to send yet. Scan first, or choose files.":
+        "Noch nichts zu senden. Scannen Sie zuerst oder wählen Sie Dateien.",
+    "Choose files for the phone":
+        "Dateien für das Handy wählen",
+    "Looking for phones… Open LocalSend on the phone.":
+        "Suche Handys… Öffnen Sie LocalSend auf dem Handy.",
+    "No phone found.\n1. Is the phone on the same Wi-Fi?\n2. Open the LocalSend app on the phone (free, Play Store / App Store).\n3. Or simply scan the QR code on the right.":
+        "Kein Handy gefunden.\n1. Ist das Handy im selben WLAN?\n2. Öffnen Sie die LocalSend-App auf dem Handy (kostenlos, Play Store / App Store).\n3. Oder scannen Sie einfach den QR-Code rechts.",
+    "Waiting for {phone} to accept… Tap Accept on the phone.":
+        "Warte, bis {phone} annimmt… Tippen Sie auf dem Handy auf Annehmen.",
+    "Sending to {phone}… {value}%":
+        "Sende an {phone}… {value} %",
+    "{phone} declined the files.":
+        "{phone} hat die Dateien abgelehnt.",
+    "{phone} is busy with another transfer. Try again in a moment.":
+        "{phone} ist mit einer anderen Übertragung beschäftigt. Versuchen Sie es gleich noch einmal.",
+    "{phone} asks for a PIN. Turn off the PIN in LocalSend settings on the phone.":
+        "{phone} verlangt eine PIN. Schalten Sie die PIN in den LocalSend-Einstellungen auf dem Handy aus.",
+    "Could not reach {phone}. Is LocalSend open and on the same Wi-Fi?":
+        "{phone} ist nicht erreichbar. Ist LocalSend geöffnet und im selben WLAN?",
+    "Sending cancelled.":
+        "Senden abgebrochen.",
+    "✓ Sent {count} file(s) to {phone}.":
+        "✓ {count} Datei(en) an {phone} gesendet.",
+    "Sending failed. {error}":
+        "Senden fehlgeschlagen. {error}",
+    "Also save an editable document (text from OCR)":
+        "Zusätzlich ein bearbeitbares Dokument speichern (Text aus OCR)",
+    "Document":
+        "Dokument",
+    "Word (.docx) · Microsoft Word":
+        "Word (.docx) · Microsoft Word",
+    "OpenDocument (.odt) · LibreOffice on Mac / Linux":
+        "OpenDocument (.odt) · LibreOffice auf Mac / Linux",
+    "Word export needs python-docx. Close and reopen the app to install it.":
+        "Für den Word-Export wird python-docx benötigt. Schließen und öffnen Sie die App erneut, um es zu installieren.",
+    "What to save, the paper and where the files go.":
+        "Was gespeichert wird, das Papier und wohin die Dateien kommen.",
+    "Recognise text in your scans and translate it.":
+        "Text in Ihren Scans erkennen und übersetzen.",
+    "Language, appearance and updates.":
+        "Sprache, Darstellung und Updates.",
+    "Output":
+        "Ausgabe",
+    "Paper":
+        "Papier",
+    "Saving":
+        "Speichern",
+    "Text recognition (OCR)":
+        "Texterkennung (OCR)",
+    "Appearance":
+        "Darstellung",
+    "Reset":
+        "Zurücksetzen",
+    "Settings":
+        "Einstellungen",
+    "Help":
+        "Hilfe",
+    "Ready":
+        "Bereit",
+    "Idle":
+        "Leerlauf",
+    "Scan":
+        "Scannen",
+    "Preview":
+        "Vorschau",
+    "Text":
+        "Text",
+    "Open last":
+        "Letzte öffnen",
+    "Open folder":
+        "Ordner öffnen",
+    "Cancel":
+        "Abbrechen",
+    "Stop search":
+        "Suche stoppen",
+    "Search again":
+        "Erneut suchen",
+    "Change…":
+        "Ändern…",
+    "Starting…":
+        "Startet…",
+    "Looking for scanners…":
+        "Suche Scanner…",
+    "Checking every driver at the same time.":
+        "Prüfe alle Treiber gleichzeitig.",
+    "Connected to {name}":
+        "Verbunden mit {name}",
+    "via {driver}":
+        "über {driver}",
+    "{brand} at {ip}":
+        "{brand} unter {ip}",
+    "{count} more in Settings":
+        "{count} weitere in den Einstellungen",
+    "No scanner connected":
+        "Kein Scanner verbunden",
+    "Turn the scanner on, check the USB cable or Wi-Fi, then click Search again.":
+        "Schalten Sie den Scanner ein, prüfen Sie das USB-Kabel oder das WLAN und klicken Sie dann auf Erneut suchen.",
+    "saves to {folder}":
+        "speichert in {folder}",
+    "asks for a file name":
+        "fragt nach einem Dateinamen",
+    "OCR":
+        "OCR",
+    "OCR off":
+        "OCR aus",
+    "translate → {lang}":
+        "übersetzen → {lang}",
+    "Scan and save in the format chosen in Settings (Ctrl+S)":
+        "Scannen und im in den Einstellungen gewählten Format speichern (Strg+S)",
+    "Quick low-resolution look at the flatbed (Ctrl+P)":
+        "Schnelle Vorschau der Glasplatte in niedriger Auflösung (Strg+P)",
+    "Recognised text and translation of the last scan (Ctrl+T)":
+        "Erkannter Text und Übersetzung des letzten Scans (Strg+T)",
+    "Open the last scanned file":
+        "Die zuletzt gescannte Datei öffnen",
+    "Open the folder with your scans":
+        "Den Ordner mit Ihren Scans öffnen",
+    "Stop the scan or search (Esc)":
+        "Scan oder Suche stoppen (Esc)",
+    "Look for scanners again (F5)":
+        "Erneut nach Scannern suchen (F5)",
+    "Choose another scanner or change scan settings":
+        "Anderen Scanner wählen oder Scaneinstellungen ändern",
+    "Scanner, scanning, text and appearance settings (Ctrl+,)":
+        "Einstellungen für Scanner, Scannen, Text und Darstellung (Strg+,)",
+    "Quick guide":
+        "Kurzanleitung",
+    "Check for updates…":
+        "Nach Updates suchen…",
+    "Project page on GitHub":
+        "Projektseite auf GitHub",
+    "About {app}":
+        "Über {app}",
+    "Update to {version}…":
+        "Auf {version} aktualisieren…",
+    "In use · scanning on this PC":
+        "Belegt · scannt auf diesem PC",
+    "In use by {who}":
+        "Belegt durch {who}",
+    "{user} on {host}":
+        "{user} auf {host}",
+    "Started at {time}. Wait until the light turns green.":
+        "Begonnen um {time}. Warten Sie, bis das Licht grün wird.",
+    "In use · scanner is busy":
+        "Belegt · Scanner ist beschäftigt",
+    "The scanner reports that it is scanning right now.":
+        "Der Scanner meldet, dass er gerade scannt.",
+    "Idle · searching…":
+        "Leerlauf · suche…",
+    "Idle · no scanner":
+        "Leerlauf · kein Scanner",
+    "No scanner is connected yet.":
+        "Es ist noch kein Scanner verbunden.",
+    "Idle · scanner on standby":
+        "Leerlauf · Scanner im Standby",
+    "The scanner reports that it is stopped or offline.":
+        "Der Scanner meldet, dass er angehalten oder offline ist.",
+    "The scanner is free. You can scan.":
+        "Der Scanner ist frei. Sie können scannen.",
+    "Idle · installing OCR…":
+        "Leerlauf · installiere OCR…",
+    "The scanner is free now. You can scan.":
+        "Der Scanner ist jetzt frei. Sie können scannen.",
+    "Scanner in use":
+        "Scanner belegt",
+    "The scanner is in use right now.\n\n{text}.\n{tip}\n\nPlease wait until the light at the top turns green, then try again.\nThis app will beep when the scanner is free.":
+        "Der Scanner wird gerade benutzt.\n\n{text}.\n{tip}\n\nBitte warten Sie, bis das Licht oben grün wird, und versuchen Sie es dann erneut.\nDie App piept, wenn der Scanner frei ist.",
+    "Scanner in use: {text}. Wait for the green light.":
+        "Scanner belegt: {text}. Warten Sie auf das grüne Licht.",
+    "Scanner":
+        "Scanner",
+    "Scanning":
+        "Scannen",
+    "Text & translation":
+        "Text & Übersetzung",
+    "General":
+        "Allgemein",
+    "Done":
+        "Fertig",
+    "Driver":
+        "Treiber",
+    "Model":
+        "Modell",
+    "Network":
+        "Netzwerk",
+    "Auto (all drivers)":
+        "Auto (alle Treiber)",
+    "No scanner found yet":
+        "Noch kein Scanner gefunden",
+    "Refresh":
+        "Aktualisieren",
+    "Driver setup":
+        "Treiber installieren",
+    "Find on network":
+        "Im Netzwerk suchen",
+    "Web panel":
+        "Web-Oberfläche",
+    "Find your model’s driver":
+        "Treiber für Ihr Modell finden",
+    "No network reply yet":
+        "Noch keine Antwort aus dem Netzwerk",
+    "Everything here is found automatically. Change it only if the wrong scanner is chosen.":
+        "Alles hier wird automatisch erkannt. Ändern Sie es nur, wenn der falsche Scanner gewählt ist.",
+    "Save as":
+        "Speichern als",
+    "one PDF with every page":
+        "ein PDF mit allen Seiten",
+    "one JPG image per page":
+        "ein JPG-Bild pro Seite",
+    "the PDF and the JPG images from one scan":
+        "das PDF und die JPG-Bilder aus einem Scan",
+    "Paper source":
+        "Papierquelle",
+    "Auto · feeder if loaded, else flatbed":
+        "Auto · Einzug, wenn Papier eingelegt ist, sonst Glasplatte",
+    "Flatbed (glass)":
+        "Glasplatte (Flachbett)",
+    "Document feeder":
+        "Dokumenteneinzug",
+    "Document feeder · both sides":
+        "Dokumenteneinzug · beidseitig",
+    "Paper size":
+        "Papierformat",
+    "Resolution":
+        "Auflösung",
+    "150 dpi · fast, small file":
+        "150 dpi · schnell, kleine Datei",
+    "300 dpi · recommended":
+        "300 dpi · empfohlen",
+    "600 dpi · fine detail":
+        "600 dpi · feine Details",
+    "Colour":
+        "Farbe",
+    "Greyscale":
+        "Graustufen",
+    "Black and white":
+        "Schwarzweiß",
+    "Save to":
+        "Speichern in",
+    "Browse…":
+        "Durchsuchen…",
+    "Ask for a file name every time":
+        "Jedes Mal nach einem Dateinamen fragen",
+    "Open the file after scanning":
+        "Datei nach dem Scannen öffnen",
+    "Auto source":
+        "Auto-Quelle",
+    "Flatbed":
+        "Glasplatte",
+    "Feeder":
+        "Einzug",
+    "Feeder · 2 sides":
+        "Einzug · beidseitig",
+    "Make PDFs searchable with OCR (text recognition)":
+        "PDFs per OCR durchsuchbar machen (Texterkennung)",
+    "OCR languages":
+        "OCR-Sprachen",
+    "Auto · English + Greek + your system language":
+        "Auto · Englisch + Griechisch + Ihre Systemsprache",
+    "Choose languages":
+        "Sprachen wählen",
+    "Languages download automatically the first time they are used.":
+        "Sprachen werden bei der ersten Verwendung automatisch heruntergeladen.",
+    "Also save the text as a .txt file":
+        "Text zusätzlich als .txt-Datei speichern",
+    "Translate automatically to":
+        "Automatisch übersetzen nach",
+    "Off":
+        "Aus",
+    "Translation service":
+        "Übersetzungsdienst",
+    "Google Translate (free)":
+        "Google Übersetzer (kostenlos)",
+    "MyMemory (free)":
+        "MyMemory (kostenlos)",
+    "LibreTranslate (your server)":
+        "LibreTranslate (Ihr Server)",
+    "LibreTranslate server":
+        "LibreTranslate-Server",
+    "API key (optional)":
+        "API-Schlüssel (optional)",
+    "Free services need internet. Google falls back to MyMemory if it fails.":
+        "Kostenlose Dienste brauchen Internet. Fällt Google aus, wird MyMemory verwendet.",
+    "Theme":
+        "Design",
+    "Auto · follow Windows / system":
+        "Auto · Windows / System folgen",
+    "Light":
+        "Hell",
+    "Dark":
+        "Dunkel",
+    "Language":
+        "Sprache",
+    "Auto · system language":
+        "Auto · Systemsprache",
+    "Updates":
+        "Updates",
+    "Check for updates automatically":
+        "Automatisch nach Updates suchen",
+    "Check now":
+        "Jetzt prüfen",
+    "Reset everything to Auto":
+        "Alles auf Auto zurücksetzen",
+    "All settings are back to Auto.":
+        "Alle Einstellungen sind wieder auf Auto.",
+    "Restart to change the language?":
+        "Neu starten, um die Sprache zu wechseln?",
+    "The new language is used after a restart. Restart now?":
+        "Die neue Sprache wird nach einem Neustart verwendet. Jetzt neu starten?",
+    "Save scans to":
+        "Scans speichern in",
+    "Recognised text":
+        "Erkannter Text",
+    "Translation":
+        "Übersetzung",
+    "Translate":
+        "Übersetzen",
+    "From":
+        "Von",
+    "To":
+        "Nach",
+    "Auto-detect":
+        "Automatisch erkennen",
+    "Copy":
+        "Kopieren",
+    "Save .txt":
+        ".txt speichern",
+    "Close":
+        "Schließen",
+    "Copied.":
+        "Kopiert.",
+    "Detected language: {lang}":
+        "Erkannte Sprache: {lang}",
+    "Translating with {engine}…":
+        "Übersetze mit {engine}…",
+    "Translated with {engine}. Detected: {lang}.":
+        "Mit {engine} übersetzt. Erkannt: {lang}.",
+    "Translation failed. {error}":
+        "Übersetzung fehlgeschlagen. {error}",
+    "Saved {name}":
+        "{name} gespeichert",
+    "No text yet. Turn on OCR in Settings › Text & translation, then scan again.":
+        "Noch kein Text. Schalten Sie OCR unter Einstellungen › Text & Übersetzung ein und scannen Sie erneut.",
+    "Text of {name}":
+        "Text von {name}",
+    "Looking for scanners ({drivers})…":
+        "Suche Scanner ({drivers})…",
+    "Looking for scanners… {count} found so far.":
+        "Suche Scanner… bisher {count} gefunden.",
+    "Ready. Load the paper and click Scan.":
+        "Bereit. Legen Sie das Papier ein und klicken Sie auf Scannen.",
+    "Search stopped. Click Search again when you are ready.":
+        "Suche gestoppt. Klicken Sie auf Erneut suchen, wenn Sie bereit sind.",
+    "No scanners found. Check the cable or Wi-Fi and the installed driver (Settings › Scanner › Driver setup).":
+        "Keine Scanner gefunden. Prüfen Sie Kabel oder WLAN und den installierten Treiber (Einstellungen › Scanner › Treiber installieren).",
+    "The NAPS2 scanner engine was not found. Close and reopen the app to install it automatically.":
+        "Die Scan-Engine NAPS2 wurde nicht gefunden. Schließen und öffnen Sie die App erneut, um sie automatisch zu installieren.",
+    "Scanning a quick low-resolution preview…":
+        "Scanne eine schnelle Vorschau in niedriger Auflösung…",
+    "Check the page placement, then scan at your chosen resolution.":
+        "Prüfen Sie die Lage der Seite und scannen Sie dann in der gewählten Auflösung.",
+    "Flatbed preview":
+        "Vorschau der Glasplatte",
+    "Back":
+        "Zurück",
+    "Preview ready.":
+        "Vorschau fertig.",
+    "No preview was produced. Check the flatbed and scanner connection.":
+        "Es wurde keine Vorschau erstellt. Prüfen Sie die Glasplatte und die Scannerverbindung.",
+    "Scanning from {where}… Keep the scanner on until the file is saved.":
+        "Scanne von {where}… Lassen Sie den Scanner an, bis die Datei gespeichert ist.",
+    "the flatbed":
+        "der Glasplatte",
+    "the document feeder":
+        "dem Dokumenteneinzug",
+    "the document feeder (both sides)":
+        "dem Dokumenteneinzug (beidseitig)",
+    " Recognising text (OCR)…":
+        " Erkenne Text (OCR)…",
+    "Downloading OCR languages ({langs}). One time only…":
+        "Lade OCR-Sprachen herunter ({langs}). Nur einmal…",
+    "OCR languages could not be installed ({langs}). Scanning without OCR.":
+        "OCR-Sprachen konnten nicht installiert werden ({langs}). Scanne ohne OCR.",
+    "Scan cancelled.":
+        "Scan abgebrochen.",
+    "The scanner is busy. Someone else may be using it. Wait a moment, then try again.":
+        "Der Scanner ist beschäftigt. Eventuell benutzt ihn jemand anderes. Warten Sie einen Moment und versuchen Sie es dann erneut.",
+    "Windows could not reach the Canon scanner. Turn it on, make sure it is on the same Wi-Fi, and check it in Canon IJ Scan Utility, then retry.":
+        "Windows konnte den Canon-Scanner nicht erreichen. Schalten Sie ihn ein, stellen Sie sicher, dass er im selben WLAN ist, prüfen Sie ihn im Canon IJ Scan Utility und versuchen Sie es erneut.",
+    "Epson Scan 2 could not open the scanner. In Epson Scan 2 Utility, add or test its network address, then retry.":
+        "Epson Scan 2 konnte den Scanner nicht öffnen. Fügen Sie im Epson Scan 2 Utility seine Netzwerkadresse hinzu oder testen Sie sie, und versuchen Sie es erneut.",
+    "Scanner operation failed. {detail}":
+        "Scannervorgang fehlgeschlagen. {detail}",
+    "No pages were scanned. Check the paper and the scanner connection.":
+        "Es wurden keine Seiten gescannt. Prüfen Sie das Papier und die Scannerverbindung.",
+    "Could not save the scan. {error}":
+        "Der Scan konnte nicht gespeichert werden. {error}",
+    "The scan was kept as {path}":
+        "Der Scan wurde als {path} behalten",
+    "✓ Saved {files} in {folder}":
+        "✓ {files} in {folder} gespeichert",
+    "{count} JPG pages":
+        "{count} JPG-Seiten",
+    "text":
+        "Text",
+    "Translating the text to {lang}…":
+        "Übersetze den Text nach {lang}…",
+    "✓ Translation saved: {name}":
+        "✓ Übersetzung gespeichert: {name}",
+    "Could not start NAPS2. {error}":
+        "NAPS2 konnte nicht gestartet werden. {error}",
+    "Could not create {folder}. {error}\nChoose another folder in Settings › Scanning.":
+        "{folder} konnte nicht erstellt werden. {error}\nWählen Sie unter Einstellungen › Scannen einen anderen Ordner.",
+    "Save scan":
+        "Scan speichern",
+    "Scan in progress":
+        "Scan läuft",
+    "A scan is running. Cancel it and close the app?":
+        "Ein Scan läuft. Abbrechen und die App schließen?",
+    "JPG export needs PyMuPDF. Close and reopen the app to install it.":
+        "Für den JPG-Export wird PyMuPDF benötigt. Schließen und öffnen Sie die App erneut, um es zu installieren.",
+    "Checking GitHub for a newer version…":
+        "Suche auf GitHub nach einer neueren Version…",
+    "Could not check for updates. {error}":
+        "Updates konnten nicht geprüft werden. {error}",
+    "You have the latest version (v{version}).":
+        "Sie haben die neueste Version (v{version}).",
+    "Update available":
+        "Update verfügbar",
+    "{app} {version} is available (you have v{current}).\n\nWhat's new:\n{notes}\n\nDownload and install it now?":
+        "{app} {version} ist verfügbar (Sie haben v{current}).\n\nNeu:\n{notes}\n\nJetzt herunterladen und installieren?",
+    "No release notes.":
+        "Keine Versionshinweise.",
+    "Update {version} is waiting in Help.":
+        "Update {version} wartet unter Hilfe.",
+    "Finish the scan first, then install the update from Help.":
+        "Beenden Sie zuerst den Scan und installieren Sie das Update dann über Hilfe.",
+    "Downloading {version} from GitHub…":
+        "Lade {version} von GitHub herunter…",
+    "Update failed. {error}":
+        "Update fehlgeschlagen. {error}",
+    "macOS is running the app from a temporary read-only copy. Drag What the Scan into Applications, open it from there, then update again.":
+        "macOS führt die App aus einer temporären, schreibgeschützten Kopie aus. Ziehen Sie What the Scan in Programme, öffnen Sie es dort und aktualisieren Sie erneut.",
+    "The app's folder can't be written to. Move the app to a folder you own (or Applications) and update again.":
+        "In den Ordner der App kann nicht geschrieben werden. Verschieben Sie die App in einen eigenen Ordner (oder Programme) und aktualisieren Sie erneut.",
+    "Update failed":
+        "Update fehlgeschlagen",
+    "{error}\n\nOpen the release page to download it by hand?":
+        "{error}\n\nDie Release-Seite öffnen, um es manuell herunterzuladen?",
+    "Updated to {version}. Restarting…":
+        "Auf {version} aktualisiert. Starte neu…",
+    "Choose a model to find its driver.":
+        "Wählen Sie ein Modell, um seinen Treiber zu finden.",
+    "Install driver":
+        "Treiber installieren",
+    "Download and install the official {label} now?\n\nWindows may ask for permission. Choose No to open the support page instead.":
+        "Den offiziellen {label} jetzt herunterladen und installieren?\n\nWindows fragt eventuell nach der Berechtigung. Wählen Sie Nein, um stattdessen die Support-Seite zu öffnen.",
+    "Preparing the official {label} installer…":
+        "Bereite das offizielle {label}-Installationsprogramm vor…",
+    "{label} installed. Looking for scanners…":
+        "{label} installiert. Suche Scanner…",
+    "Driver setup failed. {error}\nThe support page is opening so you can install it by hand.":
+        "Treiberinstallation fehlgeschlagen. {error}\nDie Support-Seite wird geöffnet, damit Sie ihn manuell installieren können.",
+    "Searching the local network for scanners (Epson, Canon, HP, AirPrint)…":
+        "Suche im lokalen Netzwerk nach Scannern (Epson, Canon, HP, AirPrint)…",
+    "answered as a network (eSCL) scanner ✓":
+        "hat als Netzwerkscanner (eSCL) geantwortet ✓",
+    "This scanner has: {sources}":
+        "Dieser Scanner hat: {sources}",
+    "Network discovery failed. {error}":
+        "Netzwerksuche fehlgeschlagen. {error}",
+    "Select your scanner's network address.":
+        "Wählen Sie die Netzwerkadresse Ihres Scanners.",
+    "No scanner replied on this local network.":
+        "Kein Scanner hat in diesem lokalen Netzwerk geantwortet.",
+    "answered as a Canon scanner ✓":
+        "hat als Canon-Scanner geantwortet ✓",
+    "responds on the scanner port ✓":
+        "antwortet auf dem Scanner-Port ✓",
+    "did not respond on the scanner port":
+        "hat auf dem Scanner-Port nicht geantwortet",
+    "{brand} {ip} {state}. Scanning uses the driver chosen above.":
+        "{brand} {ip} {state}. Gescannt wird mit dem oben gewählten Treiber.",
+}
+
+UI_IT = {
+    "{phone} (browser)": "{phone} (browser)",
+    "AirDrop":
+        "AirDrop",
+    "Send with AirDrop to an iPhone, iPad or Mac nearby":
+        "Invia con AirDrop a un iPhone, iPad o Mac vicino",
+    "AirDrop is open: choose the iPhone or Mac.":
+        "AirDrop è aperto: scegli l’iPhone o il Mac.",
+    "AirDrop is not available on this Mac. Turn on Wi-Fi and Bluetooth.":
+        "AirDrop non è disponibile su questo Mac. Attiva Wi-Fi e Bluetooth.",
+    "So that your phone can send to this computer, Windows Firewall must let it in.\n\nAllow it now? Windows asks for permission once (only phones on your own network, only the ports of {app}).":
+        "Perché il telefono possa inviare file a questo computer, Windows Firewall deve consentirlo.\n\nConsentire ora? Windows chiede l’autorizzazione una sola volta (solo i telefoni della tua rete, solo le porte di {app}).",
+    "Waiting for Windows permission (firewall)…":
+        "In attesa dell’autorizzazione di Windows (firewall)…",
+    "✓ Windows Firewall lets your phone in now.":
+        "✓ Ora Windows Firewall lascia passare il tuo telefono.",
+    "Windows Firewall was not changed, so the phone may not be able to send to this computer.":
+        "Windows Firewall non è stato modificato, quindi il telefono potrebbe non riuscire a inviare file a questo computer.",
+    "LocalSend for the phone":
+        "LocalSend per il telefono",
+    "Trying Epson's other download server…":
+        "Provo l’altro server di download di Epson…",
+    "{name} answers on the network ({ip}), but its scanner driver is not installed.":
+        "{name} risponde in rete ({ip}), ma il suo driver dello scanner non è installato.",
+    "Scanner driver missing":
+        "Driver dello scanner mancante",
+    "{name} was found on the network ({ip}), but its scanner driver is not installed, so the app cannot scan with it.\n\nInstall the official {label} now? It is downloaded and installed automatically (a few minutes; Windows may ask for permission).":
+        "{name} è stato trovato in rete ({ip}), ma il suo driver dello scanner non è installato, quindi l’app non può acquisire con esso.\n\nInstallare ora il driver ufficiale {label}? Viene scaricato e installato automaticamente (pochi minuti; Windows potrebbe chiedere l’autorizzazione).",
+    "Phone":
+        "Telefono",
+    "Send to your phone or receive photos from it, on the same Wi-Fi (LocalSend app or QR code)":
+        "Invia al telefono o ricevi foto da esso, sulla stessa rete Wi-Fi (app LocalSend o codice QR)",
+    "Send scans to your phone and receive photos from it, on the same Wi-Fi.":
+        "Invia le scansioni al telefono e ricevi foto da esso, sulla stessa rete Wi-Fi.",
+    "Receiving from the phone":
+        "Ricezione dal telefono",
+    "Keep receiving on while the app is open":
+        "Mantieni attiva la ricezione finché l’app è aperta",
+    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
+        "Se disattivato, la ricezione si apre per {minutes} minuti ogni volta che premi Telefono.",
+    "Phone photos":
+        "Foto dal telefono",
+    "Just save them in the scans folder":
+        "Salvale semplicemente nella cartella delle scansioni",
+    "Make a PDF, like a scan (OCR, Word)":
+        "Crea un PDF, come una scansione (OCR, Word)",
+    "Name on the phone":
+        "Nome sul telefono",
+    "How it works":
+        "Come funziona",
+    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. Telefono e computer sulla stessa rete Wi-Fi.\n2. Installa l’app gratuita LocalSend sul telefono, oppure scansiona semplicemente il codice QR.\n3. Premi Telefono, accanto ad Anteprima, scegli il telefono e Invia.\n4. Per inviare dal telefono: in LocalSend scegli «{name}», oppure usa la pagina del codice QR.",
+    "Get LocalSend":
+        "Scarica LocalSend",
+    "Idle · making a PDF from phone photos":
+        "Inattivo · creazione di un PDF dalle foto del telefono",
+    "✓ Made {file} from {count} phone photo(s)":
+        "✓ Creato {file} da {count} foto del telefono",
+    "Windows may now ask whether {app} can use the network.\n\nTick “Private networks” and click Allow, so your phone can reach this computer.":
+        "Windows potrebbe ora chiedere se {app} può usare la rete.\n\nSpunta «Reti private» e fai clic su Consenti, così il telefono può raggiungere questo computer.",
+    "The phone connection could not start. Another program may be using the network ports {ports}.":
+        "Impossibile avviare la connessione con il telefono. Un altro programma potrebbe usare le porte di rete {ports}.",
+    "Receiving is off. Press Phone to open it again.":
+        "La ricezione è disattivata. Premi Telefono per riaprirla.",
+    "Receiving is on: the phone can send files to “{name}”.":
+        "La ricezione è attiva: il telefono può inviare file a «{name}».",
+    "Receiving is on for {time}: the phone can send files to “{name}”.":
+        "La ricezione è attiva per {time}: il telefono può inviare file a «{name}».",
+    "… and {count} more":
+        "… e altri {count}",
+    "Files from a phone":
+        "File da un telefono",
+    "“{sender}” wants to send {count} file(s):":
+        "«{sender}» vuole inviare {count} file:",
+    "They will be saved in {folder}.":
+        "Verranno salvati in {folder}.",
+    "Accept":
+        "Accetta",
+    "Decline":
+        "Rifiuta",
+    "Receiving files from {sender}…":
+        "Ricezione dei file da {sender}…",
+    "✓ Received {count} file(s) from {sender} in {folder}":
+        "✓ Ricevuti {count} file da {sender} in {folder}",
+    "The photos were saved as they are, because a scan is running.":
+        "Le foto sono state salvate così come sono, perché è in corso una scansione.",
+    "Making a PDF from {count} phone photo(s)…":
+        "Creazione di un PDF da {count} foto del telefono…",
+    "This link has expired. Scan the QR code again.":
+        "Questo link è scaduto. Scansiona di nuovo il codice QR.",
+    "No scan yet. Scan something first, then reload this page.":
+        "Nessuna scansione per ora. Prima acquisisci qualcosa, poi ricarica questa pagina.",
+    "Waiting for the computer to accept…":
+        "In attesa che il computer accetti…",
+    "The computer declined the files.":
+        "Il computer ha rifiutato i file.",
+    "The computer is receiving other files. Try again in a moment.":
+        "Il computer sta ricevendo altri file. Riprova tra un momento.",
+    "Sending failed. Check that the phone is on the same Wi-Fi and try again.":
+        "Invio non riuscito. Verifica che il telefono sia sulla stessa rete Wi-Fi e riprova.",
+    "Sending {name}…":
+        "Invio di {name}…",
+    "✓ Sent! The files are on the computer.":
+        "✓ Inviati! I file sono sul computer.",
+    "1 · Get the scan on this phone":
+        "1 · Ricevi la scansione su questo telefono",
+    "Reload":
+        "Ricarica",
+    "2 · Send photos or files to the computer":
+        "2 · Invia foto o file al computer",
+    "Take a photo or choose files":
+        "Scatta una foto o scegli dei file",
+    "Send to your phone":
+        "Invia al telefono",
+    "Phone and computer must be on the same Wi-Fi.":
+        "Telefono e computer devono essere sulla stessa rete Wi-Fi.",
+    "Choose other files…":
+        "Scegli altri file…",
+    "Phones with LocalSend":
+        "Telefoni con LocalSend",
+    "Send":
+        "Invia",
+    "No LocalSend? Scan this":
+        "Niente LocalSend? Scansiona questo",
+    "Point the phone camera at the code. A page opens where you can download the scan and send photos to this computer.":
+        "Inquadra il codice con la fotocamera del telefono. Si apre una pagina da cui scaricare la scansione e inviare foto a questo computer.",
+    "QR code not available.":
+        "Codice QR non disponibile.",
+    "To send: {names}  ({size})":
+        "Da inviare: {names}  ({size})",
+    "Nothing to send yet. Scan first, or choose files.":
+        "Ancora niente da inviare. Prima acquisisci, oppure scegli dei file.",
+    "Choose files for the phone":
+        "Scegli i file per il telefono",
+    "Looking for phones… Open LocalSend on the phone.":
+        "Ricerca dei telefoni… Apri LocalSend sul telefono.",
+    "No phone found.\n1. Is the phone on the same Wi-Fi?\n2. Open the LocalSend app on the phone (free, Play Store / App Store).\n3. Or simply scan the QR code on the right.":
+        "Nessun telefono trovato.\n1. Il telefono è sulla stessa rete Wi-Fi?\n2. Apri l’app LocalSend sul telefono (gratuita, Play Store / App Store).\n3. Oppure scansiona semplicemente il codice QR a destra.",
+    "Waiting for {phone} to accept… Tap Accept on the phone.":
+        "In attesa che {phone} accetti… Tocca Accetta sul telefono.",
+    "Sending to {phone}… {value}%":
+        "Invio a {phone}… {value}%",
+    "{phone} declined the files.":
+        "{phone} ha rifiutato i file.",
+    "{phone} is busy with another transfer. Try again in a moment.":
+        "{phone} è occupato con un altro trasferimento. Riprova tra un momento.",
+    "{phone} asks for a PIN. Turn off the PIN in LocalSend settings on the phone.":
+        "{phone} chiede un PIN. Disattiva il PIN nelle impostazioni di LocalSend sul telefono.",
+    "Could not reach {phone}. Is LocalSend open and on the same Wi-Fi?":
+        "Impossibile raggiungere {phone}. LocalSend è aperto e sulla stessa rete Wi-Fi?",
+    "Sending cancelled.":
+        "Invio annullato.",
+    "✓ Sent {count} file(s) to {phone}.":
+        "✓ Inviati {count} file a {phone}.",
+    "Sending failed. {error}":
+        "Invio non riuscito. {error}",
+    "Also save an editable document (text from OCR)":
+        "Salva anche un documento modificabile (testo dall’OCR)",
+    "Document":
+        "Documento",
+    "Word (.docx) · Microsoft Word":
+        "Word (.docx) · Microsoft Word",
+    "OpenDocument (.odt) · LibreOffice on Mac / Linux":
+        "OpenDocument (.odt) · LibreOffice su Mac / Linux",
+    "Word export needs python-docx. Close and reopen the app to install it.":
+        "L’esportazione in Word richiede python-docx. Chiudi e riapri l’app per installarlo.",
+    "What to save, the paper and where the files go.":
+        "Cosa salvare, la carta e dove vanno i file.",
+    "Recognise text in your scans and translate it.":
+        "Riconosci il testo nelle scansioni e traducilo.",
+    "Language, appearance and updates.":
+        "Lingua, aspetto e aggiornamenti.",
+    "Output":
+        "Uscita",
+    "Paper":
+        "Carta",
+    "Saving":
+        "Salvataggio",
+    "Text recognition (OCR)":
+        "Riconoscimento del testo (OCR)",
+    "Appearance":
+        "Aspetto",
+    "Reset":
+        "Ripristina",
+    "Settings":
+        "Impostazioni",
+    "Help":
+        "Aiuto",
+    "Ready":
+        "Pronto",
+    "Idle":
+        "Inattivo",
+    "Scan":
+        "Scansiona",
+    "Preview":
+        "Anteprima",
+    "Text":
+        "Testo",
+    "Open last":
+        "Apri ultimo",
+    "Open folder":
+        "Apri cartella",
+    "Cancel":
+        "Annulla",
+    "Stop search":
+        "Ferma ricerca",
+    "Search again":
+        "Cerca di nuovo",
+    "Change…":
+        "Cambia…",
+    "Starting…":
+        "Avvio…",
+    "Looking for scanners…":
+        "Ricerca degli scanner…",
+    "Checking every driver at the same time.":
+        "Controllo di tutti i driver contemporaneamente.",
+    "Connected to {name}":
+        "Connesso a {name}",
+    "via {driver}":
+        "tramite {driver}",
+    "{brand} at {ip}":
+        "{brand} su {ip}",
+    "{count} more in Settings":
+        "altri {count} nelle Impostazioni",
+    "No scanner connected":
+        "Nessuno scanner collegato",
+    "Turn the scanner on, check the USB cable or Wi-Fi, then click Search again.":
+        "Accendi lo scanner, controlla il cavo USB o il Wi-Fi, poi fai clic su Cerca di nuovo.",
+    "saves to {folder}":
+        "salva in {folder}",
+    "asks for a file name":
+        "chiede un nome file",
+    "OCR":
+        "OCR",
+    "OCR off":
+        "OCR disattivato",
+    "translate → {lang}":
+        "traduci → {lang}",
+    "Scan and save in the format chosen in Settings (Ctrl+S)":
+        "Acquisisci e salva nel formato scelto nelle Impostazioni (Ctrl+S)",
+    "Quick low-resolution look at the flatbed (Ctrl+P)":
+        "Rapida anteprima a bassa risoluzione del piano (Ctrl+P)",
+    "Recognised text and translation of the last scan (Ctrl+T)":
+        "Testo riconosciuto e traduzione dell’ultima scansione (Ctrl+T)",
+    "Open the last scanned file":
+        "Apri l’ultimo file acquisito",
+    "Open the folder with your scans":
+        "Apri la cartella con le tue scansioni",
+    "Stop the scan or search (Esc)":
+        "Ferma la scansione o la ricerca (Esc)",
+    "Look for scanners again (F5)":
+        "Cerca di nuovo gli scanner (F5)",
+    "Choose another scanner or change scan settings":
+        "Scegli un altro scanner o cambia le impostazioni di scansione",
+    "Scanner, scanning, text and appearance settings (Ctrl+,)":
+        "Impostazioni di scanner, scansione, testo e aspetto (Ctrl+,)",
+    "Quick guide":
+        "Guida rapida",
+    "Check for updates…":
+        "Cerca aggiornamenti…",
+    "Project page on GitHub":
+        "Pagina del progetto su GitHub",
+    "About {app}":
+        "Informazioni su {app}",
+    "Update to {version}…":
+        "Aggiorna a {version}…",
+    "In use · scanning on this PC":
+        "In uso · scansione su questo PC",
+    "In use by {who}":
+        "In uso da {who}",
+    "{user} on {host}":
+        "{user} su {host}",
+    "Started at {time}. Wait until the light turns green.":
+        "Iniziata alle {time}. Attendi che la luce diventi verde.",
+    "In use · scanner is busy":
+        "In uso · lo scanner è occupato",
+    "The scanner reports that it is scanning right now.":
+        "Lo scanner segnala che sta acquisendo in questo momento.",
+    "Idle · searching…":
+        "Inattivo · ricerca…",
+    "Idle · no scanner":
+        "Inattivo · nessuno scanner",
+    "No scanner is connected yet.":
+        "Nessuno scanner è ancora collegato.",
+    "Idle · scanner on standby":
+        "Inattivo · scanner in standby",
+    "The scanner reports that it is stopped or offline.":
+        "Lo scanner segnala di essere fermo o non in linea.",
+    "The scanner is free. You can scan.":
+        "Lo scanner è libero. Puoi acquisire.",
+    "Idle · installing OCR…":
+        "Inattivo · installazione dell’OCR…",
+    "The scanner is free now. You can scan.":
+        "Ora lo scanner è libero. Puoi acquisire.",
+    "Scanner in use":
+        "Scanner in uso",
+    "The scanner is in use right now.\n\n{text}.\n{tip}\n\nPlease wait until the light at the top turns green, then try again.\nThis app will beep when the scanner is free.":
+        "Lo scanner è in uso in questo momento.\n\n{text}.\n{tip}\n\nAttendi che la luce in alto diventi verde, poi riprova.\nL’app emetterà un segnale acustico quando lo scanner sarà libero.",
+    "Scanner in use: {text}. Wait for the green light.":
+        "Scanner in uso: {text}. Attendi la luce verde.",
+    "Scanner":
+        "Scanner",
+    "Scanning":
+        "Scansione",
+    "Text & translation":
+        "Testo e traduzione",
+    "General":
+        "Generale",
+    "Done":
+        "Fatto",
+    "Driver":
+        "Driver",
+    "Model":
+        "Modello",
+    "Network":
+        "Rete",
+    "Auto (all drivers)":
+        "Auto (tutti i driver)",
+    "No scanner found yet":
+        "Nessuno scanner trovato per ora",
+    "Refresh":
+        "Aggiorna",
+    "Driver setup":
+        "Installa driver",
+    "Find on network":
+        "Cerca in rete",
+    "Web panel":
+        "Pannello web",
+    "Find your model’s driver":
+        "Trova il driver del tuo modello",
+    "No network reply yet":
+        "Ancora nessuna risposta dalla rete",
+    "Everything here is found automatically. Change it only if the wrong scanner is chosen.":
+        "Qui tutto viene rilevato automaticamente. Modificalo solo se è scelto lo scanner sbagliato.",
+    "Save as":
+        "Salva come",
+    "one PDF with every page":
+        "un PDF con tutte le pagine",
+    "one JPG image per page":
+        "un’immagine JPG per pagina",
+    "the PDF and the JPG images from one scan":
+        "il PDF e le immagini JPG da un’unica scansione",
+    "Paper source":
+        "Origine carta",
+    "Auto · feeder if loaded, else flatbed":
+        "Auto · alimentatore se caricato, altrimenti piano",
+    "Flatbed (glass)":
+        "Piano (vetro)",
+    "Document feeder":
+        "Alimentatore documenti",
+    "Document feeder · both sides":
+        "Alimentatore documenti · fronte/retro",
+    "Paper size":
+        "Formato carta",
+    "Resolution":
+        "Risoluzione",
+    "150 dpi · fast, small file":
+        "150 dpi · veloce, file piccolo",
+    "300 dpi · recommended":
+        "300 dpi · consigliato",
+    "600 dpi · fine detail":
+        "600 dpi · dettagli fini",
+    "Colour":
+        "Colore",
+    "Greyscale":
+        "Scala di grigi",
+    "Black and white":
+        "Bianco e nero",
+    "Save to":
+        "Salva in",
+    "Browse…":
+        "Sfoglia…",
+    "Ask for a file name every time":
+        "Chiedi ogni volta un nome file",
+    "Open the file after scanning":
+        "Apri il file dopo la scansione",
+    "Auto source":
+        "Origine auto",
+    "Flatbed":
+        "Piano",
+    "Feeder":
+        "Alimentatore",
+    "Feeder · 2 sides":
+        "Alimentatore · fronte/retro",
+    "Make PDFs searchable with OCR (text recognition)":
+        "Rendi i PDF ricercabili con l’OCR (riconoscimento del testo)",
+    "OCR languages":
+        "Lingue OCR",
+    "Auto · English + Greek + your system language":
+        "Auto · inglese + greco + la lingua del sistema",
+    "Choose languages":
+        "Scegli le lingue",
+    "Languages download automatically the first time they are used.":
+        "Le lingue si scaricano automaticamente al primo utilizzo.",
+    "Also save the text as a .txt file":
+        "Salva anche il testo in un file .txt",
+    "Translate automatically to":
+        "Traduci automaticamente in",
+    "Off":
+        "Disattivato",
+    "Translation service":
+        "Servizio di traduzione",
+    "Google Translate (free)":
+        "Google Traduttore (gratuito)",
+    "MyMemory (free)":
+        "MyMemory (gratuito)",
+    "LibreTranslate (your server)":
+        "LibreTranslate (il tuo server)",
+    "LibreTranslate server":
+        "Server LibreTranslate",
+    "API key (optional)":
+        "Chiave API (facoltativa)",
+    "Free services need internet. Google falls back to MyMemory if it fails.":
+        "I servizi gratuiti richiedono Internet. Se Google non funziona si passa a MyMemory.",
+    "Theme":
+        "Tema",
+    "Auto · follow Windows / system":
+        "Auto · segui Windows / sistema",
+    "Light":
+        "Chiaro",
+    "Dark":
+        "Scuro",
+    "Language":
+        "Lingua",
+    "Auto · system language":
+        "Auto · lingua del sistema",
+    "Updates":
+        "Aggiornamenti",
+    "Check for updates automatically":
+        "Cerca aggiornamenti automaticamente",
+    "Check now":
+        "Controlla ora",
+    "Reset everything to Auto":
+        "Riporta tutto su Auto",
+    "All settings are back to Auto.":
+        "Tutte le impostazioni sono tornate su Auto.",
+    "Restart to change the language?":
+        "Riavviare per cambiare lingua?",
+    "The new language is used after a restart. Restart now?":
+        "La nuova lingua viene usata dopo il riavvio. Riavviare ora?",
+    "Save scans to":
+        "Salva le scansioni in",
+    "Recognised text":
+        "Testo riconosciuto",
+    "Translation":
+        "Traduzione",
+    "Translate":
+        "Traduci",
+    "From":
+        "Da",
+    "To":
+        "A",
+    "Auto-detect":
+        "Rilevamento automatico",
+    "Copy":
+        "Copia",
+    "Save .txt":
+        "Salva .txt",
+    "Close":
+        "Chiudi",
+    "Copied.":
+        "Copiato.",
+    "Detected language: {lang}":
+        "Lingua rilevata: {lang}",
+    "Translating with {engine}…":
+        "Traduzione con {engine}…",
+    "Translated with {engine}. Detected: {lang}.":
+        "Tradotto con {engine}. Rilevato: {lang}.",
+    "Translation failed. {error}":
+        "Traduzione non riuscita. {error}",
+    "Saved {name}":
+        "{name} salvato",
+    "No text yet. Turn on OCR in Settings › Text & translation, then scan again.":
+        "Ancora nessun testo. Attiva l’OCR in Impostazioni › Testo e traduzione, poi acquisisci di nuovo.",
+    "Text of {name}":
+        "Testo di {name}",
+    "Looking for scanners ({drivers})…":
+        "Ricerca degli scanner ({drivers})…",
+    "Looking for scanners… {count} found so far.":
+        "Ricerca degli scanner… {count} trovati finora.",
+    "Ready. Load the paper and click Scan.":
+        "Pronto. Inserisci la carta e fai clic su Scansiona.",
+    "Search stopped. Click Search again when you are ready.":
+        "Ricerca interrotta. Fai clic su Cerca di nuovo quando sei pronto.",
+    "No scanners found. Check the cable or Wi-Fi and the installed driver (Settings › Scanner › Driver setup).":
+        "Nessuno scanner trovato. Controlla il cavo o il Wi-Fi e il driver installato (Impostazioni › Scanner › Installa driver).",
+    "The NAPS2 scanner engine was not found. Close and reopen the app to install it automatically.":
+        "Il motore di scansione NAPS2 non è stato trovato. Chiudi e riapri l’app per installarlo automaticamente.",
+    "Scanning a quick low-resolution preview…":
+        "Acquisizione di un’anteprima rapida a bassa risoluzione…",
+    "Check the page placement, then scan at your chosen resolution.":
+        "Controlla la posizione della pagina, poi acquisisci alla risoluzione scelta.",
+    "Flatbed preview":
+        "Anteprima del piano",
+    "Back":
+        "Indietro",
+    "Preview ready.":
+        "Anteprima pronta.",
+    "No preview was produced. Check the flatbed and scanner connection.":
+        "Nessuna anteprima prodotta. Controlla il piano e il collegamento dello scanner.",
+    "Scanning from {where}… Keep the scanner on until the file is saved.":
+        "Acquisizione da {where}… Tieni acceso lo scanner finché il file non è salvato.",
+    "the flatbed":
+        "piano",
+    "the document feeder":
+        "alimentatore documenti",
+    "the document feeder (both sides)":
+        "alimentatore documenti (fronte/retro)",
+    " Recognising text (OCR)…":
+        " Riconoscimento del testo (OCR)…",
+    "Downloading OCR languages ({langs}). One time only…":
+        "Download delle lingue OCR ({langs}). Solo la prima volta…",
+    "OCR languages could not be installed ({langs}). Scanning without OCR.":
+        "Impossibile installare le lingue OCR ({langs}). Acquisizione senza OCR.",
+    "Scan cancelled.":
+        "Scansione annullata.",
+    "The scanner is busy. Someone else may be using it. Wait a moment, then try again.":
+        "Lo scanner è occupato. Forse lo sta usando qualcun altro. Attendi un momento, poi riprova.",
+    "Windows could not reach the Canon scanner. Turn it on, make sure it is on the same Wi-Fi, and check it in Canon IJ Scan Utility, then retry.":
+        "Windows non è riuscito a raggiungere lo scanner Canon. Accendilo, verifica che sia sulla stessa rete Wi-Fi e controllalo in Canon IJ Scan Utility, poi riprova.",
+    "Epson Scan 2 could not open the scanner. In Epson Scan 2 Utility, add or test its network address, then retry.":
+        "Epson Scan 2 non è riuscito ad aprire lo scanner. In Epson Scan 2 Utility aggiungi o verifica il suo indirizzo di rete, poi riprova.",
+    "Scanner operation failed. {detail}":
+        "Operazione dello scanner non riuscita. {detail}",
+    "No pages were scanned. Check the paper and the scanner connection.":
+        "Nessuna pagina acquisita. Controlla la carta e il collegamento dello scanner.",
+    "Could not save the scan. {error}":
+        "Impossibile salvare la scansione. {error}",
+    "The scan was kept as {path}":
+        "La scansione è stata conservata come {path}",
+    "✓ Saved {files} in {folder}":
+        "✓ Salvato {files} in {folder}",
+    "{count} JPG pages":
+        "{count} pagine JPG",
+    "text":
+        "testo",
+    "Translating the text to {lang}…":
+        "Traduzione del testo in {lang}…",
+    "✓ Translation saved: {name}":
+        "✓ Traduzione salvata: {name}",
+    "Could not start NAPS2. {error}":
+        "Impossibile avviare NAPS2. {error}",
+    "Could not create {folder}. {error}\nChoose another folder in Settings › Scanning.":
+        "Impossibile creare {folder}. {error}\nScegli un’altra cartella in Impostazioni › Scansione.",
+    "Save scan":
+        "Salva scansione",
+    "Scan in progress":
+        "Scansione in corso",
+    "A scan is running. Cancel it and close the app?":
+        "È in corso una scansione. Annullarla e chiudere l’app?",
+    "JPG export needs PyMuPDF. Close and reopen the app to install it.":
+        "L’esportazione in JPG richiede PyMuPDF. Chiudi e riapri l’app per installarlo.",
+    "Checking GitHub for a newer version…":
+        "Ricerca di una versione più recente su GitHub…",
+    "Could not check for updates. {error}":
+        "Impossibile cercare aggiornamenti. {error}",
+    "You have the latest version (v{version}).":
+        "Hai l’ultima versione (v{version}).",
+    "Update available":
+        "Aggiornamento disponibile",
+    "{app} {version} is available (you have v{current}).\n\nWhat's new:\n{notes}\n\nDownload and install it now?":
+        "{app} {version} è disponibile (hai la v{current}).\n\nNovità:\n{notes}\n\nScaricarla e installarla ora?",
+    "No release notes.":
+        "Nessuna nota di rilascio.",
+    "Update {version} is waiting in Help.":
+        "L’aggiornamento {version} ti aspetta in Aiuto.",
+    "Finish the scan first, then install the update from Help.":
+        "Termina prima la scansione, poi installa l’aggiornamento da Aiuto.",
+    "Downloading {version} from GitHub…":
+        "Download di {version} da GitHub…",
+    "Update failed. {error}":
+        "Aggiornamento non riuscito. {error}",
+    "macOS is running the app from a temporary read-only copy. Drag What the Scan into Applications, open it from there, then update again.":
+        "macOS esegue l’app da una copia temporanea di sola lettura. Trascina What the Scan in Applicazioni, aprila da lì, poi aggiorna di nuovo.",
+    "The app's folder can't be written to. Move the app to a folder you own (or Applications) and update again.":
+        "Non è possibile scrivere nella cartella dell’app. Sposta l’app in una cartella tua (o in Applicazioni) e aggiorna di nuovo.",
+    "Update failed":
+        "Aggiornamento non riuscito",
+    "{error}\n\nOpen the release page to download it by hand?":
+        "{error}\n\nAprire la pagina della versione per scaricarla manualmente?",
+    "Updated to {version}. Restarting…":
+        "Aggiornato a {version}. Riavvio…",
+    "Choose a model to find its driver.":
+        "Scegli un modello per trovarne il driver.",
+    "Install driver":
+        "Installa driver",
+    "Download and install the official {label} now?\n\nWindows may ask for permission. Choose No to open the support page instead.":
+        "Scaricare e installare ora il driver ufficiale {label}?\n\nWindows potrebbe chiedere l’autorizzazione. Scegli No per aprire invece la pagina di supporto.",
+    "Preparing the official {label} installer…":
+        "Preparazione del programma di installazione ufficiale {label}…",
+    "{label} installed. Looking for scanners…":
+        "{label} installato. Ricerca degli scanner…",
+    "Driver setup failed. {error}\nThe support page is opening so you can install it by hand.":
+        "Installazione del driver non riuscita. {error}\nSi apre la pagina di supporto per installarlo manualmente.",
+    "Searching the local network for scanners (Epson, Canon, HP, AirPrint)…":
+        "Ricerca di scanner nella rete locale (Epson, Canon, HP, AirPrint)…",
+    "answered as a network (eSCL) scanner ✓":
+        "ha risposto come scanner di rete (eSCL) ✓",
+    "This scanner has: {sources}":
+        "Questo scanner ha: {sources}",
+    "Network discovery failed. {error}":
+        "Ricerca in rete non riuscita. {error}",
+    "Select your scanner's network address.":
+        "Seleziona l’indirizzo di rete del tuo scanner.",
+    "No scanner replied on this local network.":
+        "Nessuno scanner ha risposto su questa rete locale.",
+    "answered as a Canon scanner ✓":
+        "ha risposto come scanner Canon ✓",
+    "responds on the scanner port ✓":
+        "risponde sulla porta dello scanner ✓",
+    "did not respond on the scanner port":
+        "non ha risposto sulla porta dello scanner",
+    "{brand} {ip} {state}. Scanning uses the driver chosen above.":
+        "{brand} {ip} {state}. La scansione usa il driver scelto sopra.",
+}
+
+UI_ES = {
+    "{phone} (browser)": "{phone} (navegador)",
+    "AirDrop":
+        "AirDrop",
+    "Send with AirDrop to an iPhone, iPad or Mac nearby":
+        "Enviar con AirDrop a un iPhone, iPad o Mac cercano",
+    "AirDrop is open: choose the iPhone or Mac.":
+        "AirDrop está abierto: elige el iPhone o el Mac.",
+    "AirDrop is not available on this Mac. Turn on Wi-Fi and Bluetooth.":
+        "AirDrop no está disponible en este Mac. Activa la Wi-Fi y el Bluetooth.",
+    "So that your phone can send to this computer, Windows Firewall must let it in.\n\nAllow it now? Windows asks for permission once (only phones on your own network, only the ports of {app}).":
+        "Para que tu móvil pueda enviar archivos a este ordenador, el Firewall de Windows debe permitirlo.\n\n¿Permitirlo ahora? Windows pide permiso una sola vez (solo móviles de tu propia red, solo los puertos de {app}).",
+    "Waiting for Windows permission (firewall)…":
+        "Esperando el permiso de Windows (firewall)…",
+    "✓ Windows Firewall lets your phone in now.":
+        "✓ El Firewall de Windows ya deja pasar a tu móvil.",
+    "Windows Firewall was not changed, so the phone may not be able to send to this computer.":
+        "El Firewall de Windows no se ha cambiado, así que el móvil quizá no pueda enviar archivos a este ordenador.",
+    "LocalSend for the phone":
+        "LocalSend para el móvil",
+    "Trying Epson's other download server…":
+        "Probando el otro servidor de descargas de Epson…",
+    "{name} answers on the network ({ip}), but its scanner driver is not installed.":
+        "{name} responde en la red ({ip}), pero su controlador de escáner no está instalado.",
+    "Scanner driver missing":
+        "Falta el controlador del escáner",
+    "{name} was found on the network ({ip}), but its scanner driver is not installed, so the app cannot scan with it.\n\nInstall the official {label} now? It is downloaded and installed automatically (a few minutes; Windows may ask for permission).":
+        "Se encontró {name} en la red ({ip}), pero su controlador de escáner no está instalado, así que la aplicación no puede escanear con él.\n\n¿Instalar ahora el controlador oficial {label}? Se descarga e instala automáticamente (unos minutos; Windows puede pedir permiso).",
+    "Phone":
+        "Móvil",
+    "Send to your phone or receive photos from it, on the same Wi-Fi (LocalSend app or QR code)":
+        "Enviar al móvil o recibir fotos de él, en la misma Wi-Fi (app LocalSend o código QR)",
+    "Send scans to your phone and receive photos from it, on the same Wi-Fi.":
+        "Envía escaneos a tu móvil y recibe fotos de él, en la misma Wi-Fi.",
+    "Receiving from the phone":
+        "Recepción desde el móvil",
+    "Keep receiving on while the app is open":
+        "Mantener la recepción activa mientras la app esté abierta",
+    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
+        "Si está desactivado, la recepción se abre durante {minutes} minutos cada vez que pulsas Móvil.",
+    "Phone photos":
+        "Fotos del móvil",
+    "Just save them in the scans folder":
+        "Solo guardarlas en la carpeta de escaneos",
+    "Make a PDF, like a scan (OCR, Word)":
+        "Hacer un PDF, como un escaneo (OCR, Word)",
+    "Name on the phone":
+        "Nombre en el móvil",
+    "How it works":
+        "Cómo funciona",
+    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. Móvil y ordenador en la misma Wi-Fi.\n2. Instala la app gratuita LocalSend en el móvil, o simplemente escanea el código QR.\n3. Pulsa Móvil, junto a Vista previa, elige el móvil y Enviar.\n4. Para enviar desde el móvil: en LocalSend elige «{name}», o usa la página del código QR.",
+    "Get LocalSend":
+        "Obtener LocalSend",
+    "Idle · making a PDF from phone photos":
+        "Inactivo · creando un PDF con las fotos del móvil",
+    "✓ Made {file} from {count} phone photo(s)":
+        "✓ Se creó {file} a partir de {count} foto(s) del móvil",
+    "Windows may now ask whether {app} can use the network.\n\nTick “Private networks” and click Allow, so your phone can reach this computer.":
+        "Puede que Windows pregunte ahora si {app} puede usar la red.\n\nMarca «Redes privadas» y haz clic en Permitir, para que tu móvil pueda llegar a este ordenador.",
+    "The phone connection could not start. Another program may be using the network ports {ports}.":
+        "No se pudo iniciar la conexión con el móvil. Puede que otro programa esté usando los puertos de red {ports}.",
+    "Receiving is off. Press Phone to open it again.":
+        "La recepción está desactivada. Pulsa Móvil para abrirla de nuevo.",
+    "Receiving is on: the phone can send files to “{name}”.":
+        "La recepción está activa: el móvil puede enviar archivos a «{name}».",
+    "Receiving is on for {time}: the phone can send files to “{name}”.":
+        "La recepción está activa durante {time}: el móvil puede enviar archivos a «{name}».",
+    "… and {count} more":
+        "… y {count} más",
+    "Files from a phone":
+        "Archivos de un móvil",
+    "“{sender}” wants to send {count} file(s):":
+        "«{sender}» quiere enviar {count} archivo(s):",
+    "They will be saved in {folder}.":
+        "Se guardarán en {folder}.",
+    "Accept":
+        "Aceptar",
+    "Decline":
+        "Rechazar",
+    "Receiving files from {sender}…":
+        "Recibiendo archivos de {sender}…",
+    "✓ Received {count} file(s) from {sender} in {folder}":
+        "✓ Se recibieron {count} archivo(s) de {sender} en {folder}",
+    "The photos were saved as they are, because a scan is running.":
+        "Las fotos se guardaron tal cual, porque hay un escaneo en curso.",
+    "Making a PDF from {count} phone photo(s)…":
+        "Creando un PDF con {count} foto(s) del móvil…",
+    "This link has expired. Scan the QR code again.":
+        "Este enlace ha caducado. Vuelve a escanear el código QR.",
+    "No scan yet. Scan something first, then reload this page.":
+        "Todavía no hay escaneo. Escanea algo primero y luego recarga esta página.",
+    "Waiting for the computer to accept…":
+        "Esperando a que el ordenador acepte…",
+    "The computer declined the files.":
+        "El ordenador rechazó los archivos.",
+    "The computer is receiving other files. Try again in a moment.":
+        "El ordenador está recibiendo otros archivos. Inténtalo de nuevo en un momento.",
+    "Sending failed. Check that the phone is on the same Wi-Fi and try again.":
+        "El envío falló. Comprueba que el móvil esté en la misma Wi-Fi e inténtalo de nuevo.",
+    "Sending {name}…":
+        "Enviando {name}…",
+    "✓ Sent! The files are on the computer.":
+        "✓ ¡Enviado! Los archivos están en el ordenador.",
+    "1 · Get the scan on this phone":
+        "1 · Recibe el escaneo en este móvil",
+    "Reload":
+        "Recargar",
+    "2 · Send photos or files to the computer":
+        "2 · Envía fotos o archivos al ordenador",
+    "Take a photo or choose files":
+        "Hacer una foto o elegir archivos",
+    "Send to your phone":
+        "Enviar al móvil",
+    "Phone and computer must be on the same Wi-Fi.":
+        "El móvil y el ordenador deben estar en la misma Wi-Fi.",
+    "Choose other files…":
+        "Elegir otros archivos…",
+    "Phones with LocalSend":
+        "Móviles con LocalSend",
+    "Send":
+        "Enviar",
+    "No LocalSend? Scan this":
+        "¿Sin LocalSend? Escanea esto",
+    "Point the phone camera at the code. A page opens where you can download the scan and send photos to this computer.":
+        "Apunta la cámara del móvil al código. Se abre una página donde puedes descargar el escaneo y enviar fotos a este ordenador.",
+    "QR code not available.":
+        "Código QR no disponible.",
+    "To send: {names}  ({size})":
+        "Para enviar: {names}  ({size})",
+    "Nothing to send yet. Scan first, or choose files.":
+        "Aún no hay nada que enviar. Escanea primero o elige archivos.",
+    "Choose files for the phone":
+        "Elegir archivos para el móvil",
+    "Looking for phones… Open LocalSend on the phone.":
+        "Buscando móviles… Abre LocalSend en el móvil.",
+    "No phone found.\n1. Is the phone on the same Wi-Fi?\n2. Open the LocalSend app on the phone (free, Play Store / App Store).\n3. Or simply scan the QR code on the right.":
+        "No se encontró ningún móvil.\n1. ¿Está el móvil en la misma Wi-Fi?\n2. Abre la app LocalSend en el móvil (gratis, Play Store / App Store).\n3. O simplemente escanea el código QR de la derecha.",
+    "Waiting for {phone} to accept… Tap Accept on the phone.":
+        "Esperando a que {phone} acepte… Pulsa Aceptar en el móvil.",
+    "Sending to {phone}… {value}%":
+        "Enviando a {phone}… {value}%",
+    "{phone} declined the files.":
+        "{phone} rechazó los archivos.",
+    "{phone} is busy with another transfer. Try again in a moment.":
+        "{phone} está ocupado con otra transferencia. Inténtalo de nuevo en un momento.",
+    "{phone} asks for a PIN. Turn off the PIN in LocalSend settings on the phone.":
+        "{phone} pide un PIN. Desactiva el PIN en los ajustes de LocalSend del móvil.",
+    "Could not reach {phone}. Is LocalSend open and on the same Wi-Fi?":
+        "No se pudo conectar con {phone}. ¿Está LocalSend abierto y en la misma Wi-Fi?",
+    "Sending cancelled.":
+        "Envío cancelado.",
+    "✓ Sent {count} file(s) to {phone}.":
+        "✓ Se enviaron {count} archivo(s) a {phone}.",
+    "Sending failed. {error}":
+        "El envío falló. {error}",
+    "Also save an editable document (text from OCR)":
+        "Guardar también un documento editable (texto del OCR)",
+    "Document":
+        "Documento",
+    "Word (.docx) · Microsoft Word":
+        "Word (.docx) · Microsoft Word",
+    "OpenDocument (.odt) · LibreOffice on Mac / Linux":
+        "OpenDocument (.odt) · LibreOffice en Mac / Linux",
+    "Word export needs python-docx. Close and reopen the app to install it.":
+        "Exportar a Word requiere python-docx. Cierra y vuelve a abrir la app para instalarlo.",
+    "What to save, the paper and where the files go.":
+        "Qué guardar, el papel y dónde van los archivos.",
+    "Recognise text in your scans and translate it.":
+        "Reconoce el texto de tus escaneos y tradúcelo.",
+    "Language, appearance and updates.":
+        "Idioma, apariencia y actualizaciones.",
+    "Output":
+        "Salida",
+    "Paper":
+        "Papel",
+    "Saving":
+        "Guardado",
+    "Text recognition (OCR)":
+        "Reconocimiento de texto (OCR)",
+    "Appearance":
+        "Apariencia",
+    "Reset":
+        "Restablecer",
+    "Settings":
+        "Ajustes",
+    "Help":
+        "Ayuda",
+    "Ready":
+        "Listo",
+    "Idle":
+        "Inactivo",
+    "Scan":
+        "Escanear",
+    "Preview":
+        "Vista previa",
+    "Text":
+        "Texto",
+    "Open last":
+        "Abrir último",
+    "Open folder":
+        "Abrir carpeta",
+    "Cancel":
+        "Cancelar",
+    "Stop search":
+        "Detener búsqueda",
+    "Search again":
+        "Buscar de nuevo",
+    "Change…":
+        "Cambiar…",
+    "Starting…":
+        "Iniciando…",
+    "Looking for scanners…":
+        "Buscando escáneres…",
+    "Checking every driver at the same time.":
+        "Comprobando todos los controladores a la vez.",
+    "Connected to {name}":
+        "Conectado a {name}",
+    "via {driver}":
+        "mediante {driver}",
+    "{brand} at {ip}":
+        "{brand} en {ip}",
+    "{count} more in Settings":
+        "{count} más en Ajustes",
+    "No scanner connected":
+        "Ningún escáner conectado",
+    "Turn the scanner on, check the USB cable or Wi-Fi, then click Search again.":
+        "Enciende el escáner, comprueba el cable USB o la Wi-Fi y haz clic en Buscar de nuevo.",
+    "saves to {folder}":
+        "guarda en {folder}",
+    "asks for a file name":
+        "pide un nombre de archivo",
+    "OCR":
+        "OCR",
+    "OCR off":
+        "OCR desactivado",
+    "translate → {lang}":
+        "traducir → {lang}",
+    "Scan and save in the format chosen in Settings (Ctrl+S)":
+        "Escanear y guardar en el formato elegido en Ajustes (Ctrl+S)",
+    "Quick low-resolution look at the flatbed (Ctrl+P)":
+        "Vista rápida en baja resolución del cristal (Ctrl+P)",
+    "Recognised text and translation of the last scan (Ctrl+T)":
+        "Texto reconocido y traducción del último escaneo (Ctrl+T)",
+    "Open the last scanned file":
+        "Abrir el último archivo escaneado",
+    "Open the folder with your scans":
+        "Abrir la carpeta con tus escaneos",
+    "Stop the scan or search (Esc)":
+        "Detener el escaneo o la búsqueda (Esc)",
+    "Look for scanners again (F5)":
+        "Buscar escáneres de nuevo (F5)",
+    "Choose another scanner or change scan settings":
+        "Elegir otro escáner o cambiar los ajustes de escaneo",
+    "Scanner, scanning, text and appearance settings (Ctrl+,)":
+        "Ajustes de escáner, escaneo, texto y apariencia (Ctrl+,)",
+    "Quick guide":
+        "Guía rápida",
+    "Check for updates…":
+        "Buscar actualizaciones…",
+    "Project page on GitHub":
+        "Página del proyecto en GitHub",
+    "About {app}":
+        "Acerca de {app}",
+    "Update to {version}…":
+        "Actualizar a {version}…",
+    "In use · scanning on this PC":
+        "En uso · escaneando en este PC",
+    "In use by {who}":
+        "En uso por {who}",
+    "{user} on {host}":
+        "{user} en {host}",
+    "Started at {time}. Wait until the light turns green.":
+        "Empezó a las {time}. Espera a que la luz se ponga verde.",
+    "In use · scanner is busy":
+        "En uso · el escáner está ocupado",
+    "The scanner reports that it is scanning right now.":
+        "El escáner indica que está escaneando ahora mismo.",
+    "Idle · searching…":
+        "Inactivo · buscando…",
+    "Idle · no scanner":
+        "Inactivo · sin escáner",
+    "No scanner is connected yet.":
+        "Todavía no hay ningún escáner conectado.",
+    "Idle · scanner on standby":
+        "Inactivo · escáner en espera",
+    "The scanner reports that it is stopped or offline.":
+        "El escáner indica que está detenido o sin conexión.",
+    "The scanner is free. You can scan.":
+        "El escáner está libre. Puedes escanear.",
+    "Idle · installing OCR…":
+        "Inactivo · instalando OCR…",
+    "The scanner is free now. You can scan.":
+        "El escáner ya está libre. Puedes escanear.",
+    "Scanner in use":
+        "Escáner en uso",
+    "The scanner is in use right now.\n\n{text}.\n{tip}\n\nPlease wait until the light at the top turns green, then try again.\nThis app will beep when the scanner is free.":
+        "El escáner está en uso ahora mismo.\n\n{text}.\n{tip}\n\nEspera a que la luz de arriba se ponga verde y vuelve a intentarlo.\nLa app emitirá un pitido cuando el escáner esté libre.",
+    "Scanner in use: {text}. Wait for the green light.":
+        "Escáner en uso: {text}. Espera la luz verde.",
+    "Scanner":
+        "Escáner",
+    "Scanning":
+        "Escaneo",
+    "Text & translation":
+        "Texto y traducción",
+    "General":
+        "General",
+    "Done":
+        "Listo",
+    "Driver":
+        "Controlador",
+    "Model":
+        "Modelo",
+    "Network":
+        "Red",
+    "Auto (all drivers)":
+        "Auto (todos los controladores)",
+    "No scanner found yet":
+        "Aún no se ha encontrado ningún escáner",
+    "Refresh":
+        "Actualizar",
+    "Driver setup":
+        "Instalar controlador",
+    "Find on network":
+        "Buscar en la red",
+    "Web panel":
+        "Panel web",
+    "Find your model’s driver":
+        "Busca el controlador de tu modelo",
+    "No network reply yet":
+        "Aún no hay respuesta de la red",
+    "Everything here is found automatically. Change it only if the wrong scanner is chosen.":
+        "Todo aquí se detecta automáticamente. Cámbialo solo si se ha elegido el escáner equivocado.",
+    "Save as":
+        "Guardar como",
+    "one PDF with every page":
+        "un PDF con todas las páginas",
+    "one JPG image per page":
+        "una imagen JPG por página",
+    "the PDF and the JPG images from one scan":
+        "el PDF y las imágenes JPG de un mismo escaneo",
+    "Paper source":
+        "Origen del papel",
+    "Auto · feeder if loaded, else flatbed":
+        "Auto · alimentador si tiene papel, si no, cristal",
+    "Flatbed (glass)":
+        "Cristal (plano)",
+    "Document feeder":
+        "Alimentador de documentos",
+    "Document feeder · both sides":
+        "Alimentador de documentos · doble cara",
+    "Paper size":
+        "Tamaño del papel",
+    "Resolution":
+        "Resolución",
+    "150 dpi · fast, small file":
+        "150 ppp · rápido, archivo pequeño",
+    "300 dpi · recommended":
+        "300 ppp · recomendado",
+    "600 dpi · fine detail":
+        "600 ppp · detalle fino",
+    "Colour":
+        "Color",
+    "Greyscale":
+        "Escala de grises",
+    "Black and white":
+        "Blanco y negro",
+    "Save to":
+        "Guardar en",
+    "Browse…":
+        "Examinar…",
+    "Ask for a file name every time":
+        "Pedir un nombre de archivo cada vez",
+    "Open the file after scanning":
+        "Abrir el archivo después de escanear",
+    "Auto source":
+        "Origen auto",
+    "Flatbed":
+        "Cristal",
+    "Feeder":
+        "Alimentador",
+    "Feeder · 2 sides":
+        "Alimentador · 2 caras",
+    "Make PDFs searchable with OCR (text recognition)":
+        "Hacer los PDF buscables con OCR (reconocimiento de texto)",
+    "OCR languages":
+        "Idiomas del OCR",
+    "Auto · English + Greek + your system language":
+        "Auto · inglés + griego + el idioma de tu sistema",
+    "Choose languages":
+        "Elegir idiomas",
+    "Languages download automatically the first time they are used.":
+        "Los idiomas se descargan automáticamente la primera vez que se usan.",
+    "Also save the text as a .txt file":
+        "Guardar también el texto como archivo .txt",
+    "Translate automatically to":
+        "Traducir automáticamente a",
+    "Off":
+        "Desactivado",
+    "Translation service":
+        "Servicio de traducción",
+    "Google Translate (free)":
+        "Google Traductor (gratis)",
+    "MyMemory (free)":
+        "MyMemory (gratis)",
+    "LibreTranslate (your server)":
+        "LibreTranslate (tu servidor)",
+    "LibreTranslate server":
+        "Servidor LibreTranslate",
+    "API key (optional)":
+        "Clave API (opcional)",
+    "Free services need internet. Google falls back to MyMemory if it fails.":
+        "Los servicios gratuitos necesitan Internet. Si Google falla, se usa MyMemory.",
+    "Theme":
+        "Tema",
+    "Auto · follow Windows / system":
+        "Auto · seguir Windows / el sistema",
+    "Light":
+        "Claro",
+    "Dark":
+        "Oscuro",
+    "Language":
+        "Idioma",
+    "Auto · system language":
+        "Auto · idioma del sistema",
+    "Updates":
+        "Actualizaciones",
+    "Check for updates automatically":
+        "Buscar actualizaciones automáticamente",
+    "Check now":
+        "Comprobar ahora",
+    "Reset everything to Auto":
+        "Volver todo a Auto",
+    "All settings are back to Auto.":
+        "Todos los ajustes han vuelto a Auto.",
+    "Restart to change the language?":
+        "¿Reiniciar para cambiar el idioma?",
+    "The new language is used after a restart. Restart now?":
+        "El nuevo idioma se usa tras reiniciar. ¿Reiniciar ahora?",
+    "Save scans to":
+        "Guardar escaneos en",
+    "Recognised text":
+        "Texto reconocido",
+    "Translation":
+        "Traducción",
+    "Translate":
+        "Traducir",
+    "From":
+        "De",
+    "To":
+        "A",
+    "Auto-detect":
+        "Detectar automáticamente",
+    "Copy":
+        "Copiar",
+    "Save .txt":
+        "Guardar .txt",
+    "Close":
+        "Cerrar",
+    "Copied.":
+        "Copiado.",
+    "Detected language: {lang}":
+        "Idioma detectado: {lang}",
+    "Translating with {engine}…":
+        "Traduciendo con {engine}…",
+    "Translated with {engine}. Detected: {lang}.":
+        "Traducido con {engine}. Detectado: {lang}.",
+    "Translation failed. {error}":
+        "La traducción falló. {error}",
+    "Saved {name}":
+        "{name} guardado",
+    "No text yet. Turn on OCR in Settings › Text & translation, then scan again.":
+        "Aún no hay texto. Activa el OCR en Ajustes › Texto y traducción y vuelve a escanear.",
+    "Text of {name}":
+        "Texto de {name}",
+    "Looking for scanners ({drivers})…":
+        "Buscando escáneres ({drivers})…",
+    "Looking for scanners… {count} found so far.":
+        "Buscando escáneres… {count} encontrados hasta ahora.",
+    "Ready. Load the paper and click Scan.":
+        "Listo. Coloca el papel y haz clic en Escanear.",
+    "Search stopped. Click Search again when you are ready.":
+        "Búsqueda detenida. Haz clic en Buscar de nuevo cuando estés listo.",
+    "No scanners found. Check the cable or Wi-Fi and the installed driver (Settings › Scanner › Driver setup).":
+        "No se encontraron escáneres. Comprueba el cable o la Wi-Fi y el controlador instalado (Ajustes › Escáner › Instalar controlador).",
+    "The NAPS2 scanner engine was not found. Close and reopen the app to install it automatically.":
+        "No se encontró el motor de escaneo NAPS2. Cierra y vuelve a abrir la app para instalarlo automáticamente.",
+    "Scanning a quick low-resolution preview…":
+        "Escaneando una vista previa rápida en baja resolución…",
+    "Check the page placement, then scan at your chosen resolution.":
+        "Comprueba la posición de la página y escanea con la resolución elegida.",
+    "Flatbed preview":
+        "Vista previa del cristal",
+    "Back":
+        "Atrás",
+    "Preview ready.":
+        "Vista previa lista.",
+    "No preview was produced. Check the flatbed and scanner connection.":
+        "No se generó ninguna vista previa. Comprueba el cristal y la conexión del escáner.",
+    "Scanning from {where}… Keep the scanner on until the file is saved.":
+        "Escaneando desde {where}… Mantén el escáner encendido hasta que se guarde el archivo.",
+    "the flatbed":
+        "el cristal",
+    "the document feeder":
+        "el alimentador de documentos",
+    "the document feeder (both sides)":
+        "el alimentador de documentos (doble cara)",
+    " Recognising text (OCR)…":
+        " Reconociendo texto (OCR)…",
+    "Downloading OCR languages ({langs}). One time only…":
+        "Descargando idiomas del OCR ({langs}). Solo una vez…",
+    "OCR languages could not be installed ({langs}). Scanning without OCR.":
+        "No se pudieron instalar los idiomas del OCR ({langs}). Escaneando sin OCR.",
+    "Scan cancelled.":
+        "Escaneo cancelado.",
+    "The scanner is busy. Someone else may be using it. Wait a moment, then try again.":
+        "El escáner está ocupado. Puede que otra persona lo esté usando. Espera un momento y vuelve a intentarlo.",
+    "Windows could not reach the Canon scanner. Turn it on, make sure it is on the same Wi-Fi, and check it in Canon IJ Scan Utility, then retry.":
+        "Windows no pudo conectar con el escáner Canon. Enciéndelo, comprueba que esté en la misma Wi-Fi y revísalo en Canon IJ Scan Utility; luego vuelve a intentarlo.",
+    "Epson Scan 2 could not open the scanner. In Epson Scan 2 Utility, add or test its network address, then retry.":
+        "Epson Scan 2 no pudo abrir el escáner. En Epson Scan 2 Utility, añade o prueba su dirección de red y vuelve a intentarlo.",
+    "Scanner operation failed. {detail}":
+        "La operación del escáner falló. {detail}",
+    "No pages were scanned. Check the paper and the scanner connection.":
+        "No se escaneó ninguna página. Comprueba el papel y la conexión del escáner.",
+    "Could not save the scan. {error}":
+        "No se pudo guardar el escaneo. {error}",
+    "The scan was kept as {path}":
+        "El escaneo se conservó como {path}",
+    "✓ Saved {files} in {folder}":
+        "✓ Se guardó {files} en {folder}",
+    "{count} JPG pages":
+        "{count} páginas JPG",
+    "text":
+        "texto",
+    "Translating the text to {lang}…":
+        "Traduciendo el texto a {lang}…",
+    "✓ Translation saved: {name}":
+        "✓ Traducción guardada: {name}",
+    "Could not start NAPS2. {error}":
+        "No se pudo iniciar NAPS2. {error}",
+    "Could not create {folder}. {error}\nChoose another folder in Settings › Scanning.":
+        "No se pudo crear {folder}. {error}\nElige otra carpeta en Ajustes › Escaneo.",
+    "Save scan":
+        "Guardar escaneo",
+    "Scan in progress":
+        "Escaneo en curso",
+    "A scan is running. Cancel it and close the app?":
+        "Hay un escaneo en curso. ¿Cancelarlo y cerrar la app?",
+    "JPG export needs PyMuPDF. Close and reopen the app to install it.":
+        "Exportar a JPG requiere PyMuPDF. Cierra y vuelve a abrir la app para instalarlo.",
+    "Checking GitHub for a newer version…":
+        "Buscando una versión más nueva en GitHub…",
+    "Could not check for updates. {error}":
+        "No se pudieron buscar actualizaciones. {error}",
+    "You have the latest version (v{version}).":
+        "Tienes la última versión (v{version}).",
+    "Update available":
+        "Actualización disponible",
+    "{app} {version} is available (you have v{current}).\n\nWhat's new:\n{notes}\n\nDownload and install it now?":
+        "{app} {version} está disponible (tienes la v{current}).\n\nNovedades:\n{notes}\n\n¿Descargarla e instalarla ahora?",
+    "No release notes.":
+        "Sin notas de la versión.",
+    "Update {version} is waiting in Help.":
+        "La actualización {version} te espera en Ayuda.",
+    "Finish the scan first, then install the update from Help.":
+        "Termina primero el escaneo y luego instala la actualización desde Ayuda.",
+    "Downloading {version} from GitHub…":
+        "Descargando {version} desde GitHub…",
+    "Update failed. {error}":
+        "La actualización falló. {error}",
+    "macOS is running the app from a temporary read-only copy. Drag What the Scan into Applications, open it from there, then update again.":
+        "macOS está ejecutando la app desde una copia temporal de solo lectura. Arrastra What the Scan a Aplicaciones, ábrela desde allí y vuelve a actualizar.",
+    "The app's folder can't be written to. Move the app to a folder you own (or Applications) and update again.":
+        "No se puede escribir en la carpeta de la app. Mueve la app a una carpeta tuya (o a Aplicaciones) y vuelve a actualizar.",
+    "Update failed":
+        "La actualización falló",
+    "{error}\n\nOpen the release page to download it by hand?":
+        "{error}\n\n¿Abrir la página de la versión para descargarla manualmente?",
+    "Updated to {version}. Restarting…":
+        "Actualizado a {version}. Reiniciando…",
+    "Choose a model to find its driver.":
+        "Elige un modelo para buscar su controlador.",
+    "Install driver":
+        "Instalar controlador",
+    "Download and install the official {label} now?\n\nWindows may ask for permission. Choose No to open the support page instead.":
+        "¿Descargar e instalar ahora el controlador oficial {label}?\n\nWindows puede pedir permiso. Elige No para abrir la página de soporte en su lugar.",
+    "Preparing the official {label} installer…":
+        "Preparando el instalador oficial de {label}…",
+    "{label} installed. Looking for scanners…":
+        "{label} instalado. Buscando escáneres…",
+    "Driver setup failed. {error}\nThe support page is opening so you can install it by hand.":
+        "La instalación del controlador falló. {error}\nSe abre la página de soporte para que puedas instalarlo manualmente.",
+    "Searching the local network for scanners (Epson, Canon, HP, AirPrint)…":
+        "Buscando escáneres en la red local (Epson, Canon, HP, AirPrint)…",
+    "answered as a network (eSCL) scanner ✓":
+        "respondió como escáner de red (eSCL) ✓",
+    "This scanner has: {sources}":
+        "Este escáner tiene: {sources}",
+    "Network discovery failed. {error}":
+        "La búsqueda en la red falló. {error}",
+    "Select your scanner's network address.":
+        "Selecciona la dirección de red de tu escáner.",
+    "No scanner replied on this local network.":
+        "Ningún escáner respondió en esta red local.",
+    "answered as a Canon scanner ✓":
+        "respondió como escáner Canon ✓",
+    "responds on the scanner port ✓":
+        "responde en el puerto del escáner ✓",
+    "did not respond on the scanner port":
+        "no respondió en el puerto del escáner",
+    "{brand} {ip} {state}. Scanning uses the driver chosen above.":
+        "{brand} {ip} {state}. El escaneo usa el controlador elegido arriba.",
+}
+
+UI_RO = {
+    "{phone} (browser)": "{phone} (browser)",
+    "AirDrop":
+        "AirDrop",
+    "Send with AirDrop to an iPhone, iPad or Mac nearby":
+        "Trimiteți cu AirDrop către un iPhone, iPad sau Mac din apropiere",
+    "AirDrop is open: choose the iPhone or Mac.":
+        "AirDrop este deschis: alegeți iPhone-ul sau Mac-ul.",
+    "AirDrop is not available on this Mac. Turn on Wi-Fi and Bluetooth.":
+        "AirDrop nu este disponibil pe acest Mac. Porniți Wi-Fi și Bluetooth.",
+    "So that your phone can send to this computer, Windows Firewall must let it in.\n\nAllow it now? Windows asks for permission once (only phones on your own network, only the ports of {app}).":
+        "Ca telefonul să poată trimite fișiere către acest computer, Windows Firewall trebuie să-l permită.\n\nPermiteți acum? Windows cere permisiunea o singură dată (doar telefoane din rețeaua dvs., doar porturile {app}).",
+    "Waiting for Windows permission (firewall)…":
+        "Se așteaptă permisiunea Windows (firewall)…",
+    "✓ Windows Firewall lets your phone in now.":
+        "✓ Windows Firewall lasă acum telefonul să se conecteze.",
+    "Windows Firewall was not changed, so the phone may not be able to send to this computer.":
+        "Windows Firewall nu a fost modificat, așa că telefonul s-ar putea să nu poată trimite fișiere către acest computer.",
+    "LocalSend for the phone":
+        "LocalSend pentru telefon",
+    "Trying Epson's other download server…":
+        "Se încearcă celălalt server de descărcare Epson…",
+    "{name} answers on the network ({ip}), but its scanner driver is not installed.":
+        "{name} răspunde în rețea ({ip}), dar driverul său de scanner nu este instalat.",
+    "Scanner driver missing":
+        "Lipsește driverul scannerului",
+    "{name} was found on the network ({ip}), but its scanner driver is not installed, so the app cannot scan with it.\n\nInstall the official {label} now? It is downloaded and installed automatically (a few minutes; Windows may ask for permission).":
+        "{name} a fost găsit în rețea ({ip}), dar driverul său de scanner nu este instalat, deci aplicația nu poate scana cu el.\n\nInstalați acum driverul oficial {label}? Se descarcă și se instalează automat (câteva minute; Windows poate cere permisiunea).",
+    "Phone":
+        "Telefon",
+    "Send to your phone or receive photos from it, on the same Wi-Fi (LocalSend app or QR code)":
+        "Trimiteți către telefon sau primiți fotografii de la el, în aceeași rețea Wi-Fi (aplicația LocalSend sau cod QR)",
+    "Send scans to your phone and receive photos from it, on the same Wi-Fi.":
+        "Trimiteți scanări către telefon și primiți fotografii de la el, în aceeași rețea Wi-Fi.",
+    "Receiving from the phone":
+        "Primire de la telefon",
+    "Keep receiving on while the app is open":
+        "Primirea rămâne activă cât timp aplicația este deschisă",
+    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
+        "Când este dezactivat, primirea se deschide pentru {minutes} minute de fiecare dată când apăsați Telefon.",
+    "Phone photos":
+        "Fotografii de pe telefon",
+    "Just save them in the scans folder":
+        "Doar salvați-le în dosarul cu scanări",
+    "Make a PDF, like a scan (OCR, Word)":
+        "Faceți un PDF, ca o scanare (OCR, Word)",
+    "Name on the phone":
+        "Nume pe telefon",
+    "How it works":
+        "Cum funcționează",
+    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. Telefonul și computerul în aceeași rețea Wi-Fi.\n2. Instalați aplicația gratuită LocalSend pe telefon sau scanați pur și simplu codul QR.\n3. Apăsați Telefon, lângă Previzualizare, alegeți telefonul și Trimite.\n4. Pentru a trimite de pe telefon: în LocalSend alegeți „{name}” sau folosiți pagina codului QR.",
+    "Get LocalSend":
+        "Obțineți LocalSend",
+    "Idle · making a PDF from phone photos":
+        "Inactiv · se creează un PDF din fotografiile telefonului",
+    "✓ Made {file} from {count} phone photo(s)":
+        "✓ S-a creat {file} din {count} fotografii de pe telefon",
+    "Windows may now ask whether {app} can use the network.\n\nTick “Private networks” and click Allow, so your phone can reach this computer.":
+        "Windows poate întreba acum dacă {app} poate folosi rețeaua.\n\nBifați „Rețele private” și faceți clic pe Permiteți, ca telefonul să poată ajunge la acest computer.",
+    "The phone connection could not start. Another program may be using the network ports {ports}.":
+        "Conexiunea cu telefonul nu a putut porni. Poate alt program folosește porturile de rețea {ports}.",
+    "Receiving is off. Press Phone to open it again.":
+        "Primirea este oprită. Apăsați Telefon pentru a o redeschide.",
+    "Receiving is on: the phone can send files to “{name}”.":
+        "Primirea este activă: telefonul poate trimite fișiere către „{name}”.",
+    "Receiving is on for {time}: the phone can send files to “{name}”.":
+        "Primirea este activă pentru {time}: telefonul poate trimite fișiere către „{name}”.",
+    "… and {count} more":
+        "… și încă {count}",
+    "Files from a phone":
+        "Fișiere de pe un telefon",
+    "“{sender}” wants to send {count} file(s):":
+        "„{sender}” vrea să trimită {count} fișier(e):",
+    "They will be saved in {folder}.":
+        "Vor fi salvate în {folder}.",
+    "Accept":
+        "Acceptă",
+    "Decline":
+        "Refuză",
+    "Receiving files from {sender}…":
+        "Se primesc fișiere de la {sender}…",
+    "✓ Received {count} file(s) from {sender} in {folder}":
+        "✓ S-au primit {count} fișier(e) de la {sender} în {folder}",
+    "The photos were saved as they are, because a scan is running.":
+        "Fotografiile au fost salvate așa cum sunt, deoarece rulează o scanare.",
+    "Making a PDF from {count} phone photo(s)…":
+        "Se creează un PDF din {count} fotografii de pe telefon…",
+    "This link has expired. Scan the QR code again.":
+        "Acest link a expirat. Scanați din nou codul QR.",
+    "No scan yet. Scan something first, then reload this page.":
+        "Încă nu există nicio scanare. Scanați mai întâi ceva, apoi reîncărcați pagina.",
+    "Waiting for the computer to accept…":
+        "Se așteaptă acceptarea de către computer…",
+    "The computer declined the files.":
+        "Computerul a refuzat fișierele.",
+    "The computer is receiving other files. Try again in a moment.":
+        "Computerul primește alte fișiere. Încercați din nou peste puțin timp.",
+    "Sending failed. Check that the phone is on the same Wi-Fi and try again.":
+        "Trimiterea a eșuat. Verificați că telefonul este în aceeași rețea Wi-Fi și încercați din nou.",
+    "Sending {name}…":
+        "Se trimite {name}…",
+    "✓ Sent! The files are on the computer.":
+        "✓ Trimis! Fișierele sunt pe computer.",
+    "1 · Get the scan on this phone":
+        "1 · Luați scanarea pe acest telefon",
+    "Reload":
+        "Reîncarcă",
+    "2 · Send photos or files to the computer":
+        "2 · Trimiteți fotografii sau fișiere către computer",
+    "Take a photo or choose files":
+        "Faceți o fotografie sau alegeți fișiere",
+    "Send to your phone":
+        "Trimiteți către telefon",
+    "Phone and computer must be on the same Wi-Fi.":
+        "Telefonul și computerul trebuie să fie în aceeași rețea Wi-Fi.",
+    "Choose other files…":
+        "Alegeți alte fișiere…",
+    "Phones with LocalSend":
+        "Telefoane cu LocalSend",
+    "Send":
+        "Trimite",
+    "No LocalSend? Scan this":
+        "Nu aveți LocalSend? Scanați asta",
+    "Point the phone camera at the code. A page opens where you can download the scan and send photos to this computer.":
+        "Îndreptați camera telefonului spre cod. Se deschide o pagină de unde puteți descărca scanarea și trimite fotografii către acest computer.",
+    "QR code not available.":
+        "Codul QR nu este disponibil.",
+    "To send: {names}  ({size})":
+        "De trimis: {names}  ({size})",
+    "Nothing to send yet. Scan first, or choose files.":
+        "Încă nu e nimic de trimis. Scanați mai întâi sau alegeți fișiere.",
+    "Choose files for the phone":
+        "Alegeți fișiere pentru telefon",
+    "Looking for phones… Open LocalSend on the phone.":
+        "Se caută telefoane… Deschideți LocalSend pe telefon.",
+    "No phone found.\n1. Is the phone on the same Wi-Fi?\n2. Open the LocalSend app on the phone (free, Play Store / App Store).\n3. Or simply scan the QR code on the right.":
+        "Nu s-a găsit niciun telefon.\n1. Telefonul este în aceeași rețea Wi-Fi?\n2. Deschideți aplicația LocalSend pe telefon (gratuită, Play Store / App Store).\n3. Sau scanați pur și simplu codul QR din dreapta.",
+    "Waiting for {phone} to accept… Tap Accept on the phone.":
+        "Se așteaptă acceptarea de către {phone}… Atingeți Acceptă pe telefon.",
+    "Sending to {phone}… {value}%":
+        "Se trimite către {phone}… {value}%",
+    "{phone} declined the files.":
+        "{phone} a refuzat fișierele.",
+    "{phone} is busy with another transfer. Try again in a moment.":
+        "{phone} este ocupat cu alt transfer. Încercați din nou peste puțin timp.",
+    "{phone} asks for a PIN. Turn off the PIN in LocalSend settings on the phone.":
+        "{phone} cere un PIN. Dezactivați PIN-ul în setările LocalSend de pe telefon.",
+    "Could not reach {phone}. Is LocalSend open and on the same Wi-Fi?":
+        "{phone} nu a putut fi contactat. Este LocalSend deschis și în aceeași rețea Wi-Fi?",
+    "Sending cancelled.":
+        "Trimiterea a fost anulată.",
+    "✓ Sent {count} file(s) to {phone}.":
+        "✓ S-au trimis {count} fișier(e) către {phone}.",
+    "Sending failed. {error}":
+        "Trimiterea a eșuat. {error}",
+    "Also save an editable document (text from OCR)":
+        "Salvați și un document editabil (text din OCR)",
+    "Document":
+        "Document",
+    "Word (.docx) · Microsoft Word":
+        "Word (.docx) · Microsoft Word",
+    "OpenDocument (.odt) · LibreOffice on Mac / Linux":
+        "OpenDocument (.odt) · LibreOffice pe Mac / Linux",
+    "Word export needs python-docx. Close and reopen the app to install it.":
+        "Exportul în Word necesită python-docx. Închideți și redeschideți aplicația pentru a-l instala.",
+    "What to save, the paper and where the files go.":
+        "Ce se salvează, hârtia și unde ajung fișierele.",
+    "Recognise text in your scans and translate it.":
+        "Recunoașteți textul din scanări și traduceți-l.",
+    "Language, appearance and updates.":
+        "Limbă, aspect și actualizări.",
+    "Output":
+        "Ieșire",
+    "Paper":
+        "Hârtie",
+    "Saving":
+        "Salvare",
+    "Text recognition (OCR)":
+        "Recunoaștere text (OCR)",
+    "Appearance":
+        "Aspect",
+    "Reset":
+        "Resetare",
+    "Settings":
+        "Setări",
+    "Help":
+        "Ajutor",
+    "Ready":
+        "Gata",
+    "Idle":
+        "Inactiv",
+    "Scan":
+        "Scanează",
+    "Preview":
+        "Previzualizare",
+    "Text":
+        "Text",
+    "Open last":
+        "Deschide ultimul",
+    "Open folder":
+        "Deschide dosarul",
+    "Cancel":
+        "Anulează",
+    "Stop search":
+        "Oprește căutarea",
+    "Search again":
+        "Caută din nou",
+    "Change…":
+        "Schimbă…",
+    "Starting…":
+        "Se pornește…",
+    "Looking for scanners…":
+        "Se caută scannere…",
+    "Checking every driver at the same time.":
+        "Se verifică toate driverele în același timp.",
+    "Connected to {name}":
+        "Conectat la {name}",
+    "via {driver}":
+        "prin {driver}",
+    "{brand} at {ip}":
+        "{brand} la {ip}",
+    "{count} more in Settings":
+        "încă {count} în Setări",
+    "No scanner connected":
+        "Niciun scanner conectat",
+    "Turn the scanner on, check the USB cable or Wi-Fi, then click Search again.":
+        "Porniți scannerul, verificați cablul USB sau Wi-Fi-ul, apoi faceți clic pe Caută din nou.",
+    "saves to {folder}":
+        "salvează în {folder}",
+    "asks for a file name":
+        "cere un nume de fișier",
+    "OCR":
+        "OCR",
+    "OCR off":
+        "OCR oprit",
+    "translate → {lang}":
+        "traducere → {lang}",
+    "Scan and save in the format chosen in Settings (Ctrl+S)":
+        "Scanați și salvați în formatul ales în Setări (Ctrl+S)",
+    "Quick low-resolution look at the flatbed (Ctrl+P)":
+        "Privire rapidă la rezoluție mică pe geamul scannerului (Ctrl+P)",
+    "Recognised text and translation of the last scan (Ctrl+T)":
+        "Textul recunoscut și traducerea ultimei scanări (Ctrl+T)",
+    "Open the last scanned file":
+        "Deschideți ultimul fișier scanat",
+    "Open the folder with your scans":
+        "Deschideți dosarul cu scanările",
+    "Stop the scan or search (Esc)":
+        "Opriți scanarea sau căutarea (Esc)",
+    "Look for scanners again (F5)":
+        "Căutați din nou scannere (F5)",
+    "Choose another scanner or change scan settings":
+        "Alegeți alt scanner sau schimbați setările de scanare",
+    "Scanner, scanning, text and appearance settings (Ctrl+,)":
+        "Setări pentru scanner, scanare, text și aspect (Ctrl+,)",
+    "Quick guide":
+        "Ghid rapid",
+    "Check for updates…":
+        "Căutați actualizări…",
+    "Project page on GitHub":
+        "Pagina proiectului pe GitHub",
+    "About {app}":
+        "Despre {app}",
+    "Update to {version}…":
+        "Actualizați la {version}…",
+    "In use · scanning on this PC":
+        "Ocupat · se scanează pe acest PC",
+    "In use by {who}":
+        "Folosit de {who}",
+    "{user} on {host}":
+        "{user} pe {host}",
+    "Started at {time}. Wait until the light turns green.":
+        "A început la {time}. Așteptați până când lumina devine verde.",
+    "In use · scanner is busy":
+        "Ocupat · scannerul lucrează",
+    "The scanner reports that it is scanning right now.":
+        "Scannerul raportează că scanează chiar acum.",
+    "Idle · searching…":
+        "Inactiv · se caută…",
+    "Idle · no scanner":
+        "Inactiv · niciun scanner",
+    "No scanner is connected yet.":
+        "Încă nu este conectat niciun scanner.",
+    "Idle · scanner on standby":
+        "Inactiv · scanner în așteptare",
+    "The scanner reports that it is stopped or offline.":
+        "Scannerul raportează că este oprit sau offline.",
+    "The scanner is free. You can scan.":
+        "Scannerul este liber. Puteți scana.",
+    "Idle · installing OCR…":
+        "Inactiv · se instalează OCR…",
+    "The scanner is free now. You can scan.":
+        "Scannerul este liber acum. Puteți scana.",
+    "Scanner in use":
+        "Scanner ocupat",
+    "The scanner is in use right now.\n\n{text}.\n{tip}\n\nPlease wait until the light at the top turns green, then try again.\nThis app will beep when the scanner is free.":
+        "Scannerul este folosit chiar acum.\n\n{text}.\n{tip}\n\nAșteptați până când lumina de sus devine verde, apoi încercați din nou.\nAplicația va emite un sunet când scannerul este liber.",
+    "Scanner in use: {text}. Wait for the green light.":
+        "Scanner ocupat: {text}. Așteptați lumina verde.",
+    "Scanner":
+        "Scanner",
+    "Scanning":
+        "Scanare",
+    "Text & translation":
+        "Text și traducere",
+    "General":
+        "General",
+    "Done":
+        "Gata",
+    "Driver":
+        "Driver",
+    "Model":
+        "Model",
+    "Network":
+        "Rețea",
+    "Auto (all drivers)":
+        "Auto (toate driverele)",
+    "No scanner found yet":
+        "Încă nu s-a găsit niciun scanner",
+    "Refresh":
+        "Reîmprospătează",
+    "Driver setup":
+        "Instalare driver",
+    "Find on network":
+        "Caută în rețea",
+    "Web panel":
+        "Panou web",
+    "Find your model’s driver":
+        "Găsiți driverul modelului dvs.",
+    "No network reply yet":
+        "Încă niciun răspuns din rețea",
+    "Everything here is found automatically. Change it only if the wrong scanner is chosen.":
+        "Totul aici se detectează automat. Schimbați doar dacă a fost ales scannerul greșit.",
+    "Save as":
+        "Salvează ca",
+    "one PDF with every page":
+        "un PDF cu toate paginile",
+    "one JPG image per page":
+        "o imagine JPG pe pagină",
+    "the PDF and the JPG images from one scan":
+        "PDF-ul și imaginile JPG dintr-o singură scanare",
+    "Paper source":
+        "Sursa hârtiei",
+    "Auto · feeder if loaded, else flatbed":
+        "Auto · alimentator dacă are hârtie, altfel geam",
+    "Flatbed (glass)":
+        "Geam (flatbed)",
+    "Document feeder":
+        "Alimentator de documente",
+    "Document feeder · both sides":
+        "Alimentator de documente · față-verso",
+    "Paper size":
+        "Format hârtie",
+    "Resolution":
+        "Rezoluție",
+    "150 dpi · fast, small file":
+        "150 dpi · rapid, fișier mic",
+    "300 dpi · recommended":
+        "300 dpi · recomandat",
+    "600 dpi · fine detail":
+        "600 dpi · detalii fine",
+    "Colour":
+        "Culoare",
+    "Greyscale":
+        "Tonuri de gri",
+    "Black and white":
+        "Alb-negru",
+    "Save to":
+        "Salvează în",
+    "Browse…":
+        "Răsfoiește…",
+    "Ask for a file name every time":
+        "Cere de fiecare dată un nume de fișier",
+    "Open the file after scanning":
+        "Deschide fișierul după scanare",
+    "Auto source":
+        "Sursă auto",
+    "Flatbed":
+        "Geam",
+    "Feeder":
+        "Alimentator",
+    "Feeder · 2 sides":
+        "Alimentator · 2 fețe",
+    "Make PDFs searchable with OCR (text recognition)":
+        "Faceți PDF-urile căutabile cu OCR (recunoaștere text)",
+    "OCR languages":
+        "Limbi OCR",
+    "Auto · English + Greek + your system language":
+        "Auto · engleză + greacă + limba sistemului",
+    "Choose languages":
+        "Alegeți limbile",
+    "Languages download automatically the first time they are used.":
+        "Limbile se descarcă automat la prima utilizare.",
+    "Also save the text as a .txt file":
+        "Salvați și textul ca fișier .txt",
+    "Translate automatically to":
+        "Traducere automată în",
+    "Off":
+        "Oprit",
+    "Translation service":
+        "Serviciu de traducere",
+    "Google Translate (free)":
+        "Google Traducere (gratuit)",
+    "MyMemory (free)":
+        "MyMemory (gratuit)",
+    "LibreTranslate (your server)":
+        "LibreTranslate (serverul dvs.)",
+    "LibreTranslate server":
+        "Server LibreTranslate",
+    "API key (optional)":
+        "Cheie API (opțională)",
+    "Free services need internet. Google falls back to MyMemory if it fails.":
+        "Serviciile gratuite au nevoie de internet. Dacă Google eșuează, se folosește MyMemory.",
+    "Theme":
+        "Temă",
+    "Auto · follow Windows / system":
+        "Auto · urmează Windows / sistemul",
+    "Light":
+        "Luminoasă",
+    "Dark":
+        "Întunecată",
+    "Language":
+        "Limbă",
+    "Auto · system language":
+        "Auto · limba sistemului",
+    "Updates":
+        "Actualizări",
+    "Check for updates automatically":
+        "Caută automat actualizări",
+    "Check now":
+        "Verifică acum",
+    "Reset everything to Auto":
+        "Readuce totul la Auto",
+    "All settings are back to Auto.":
+        "Toate setările au revenit la Auto.",
+    "Restart to change the language?":
+        "Reporniți pentru a schimba limba?",
+    "The new language is used after a restart. Restart now?":
+        "Noua limbă se folosește după repornire. Reporniți acum?",
+    "Save scans to":
+        "Salvează scanările în",
+    "Recognised text":
+        "Text recunoscut",
+    "Translation":
+        "Traducere",
+    "Translate":
+        "Tradu",
+    "From":
+        "Din",
+    "To":
+        "În",
+    "Auto-detect":
+        "Detectare automată",
+    "Copy":
+        "Copiază",
+    "Save .txt":
+        "Salvează .txt",
+    "Close":
+        "Închide",
+    "Copied.":
+        "Copiat.",
+    "Detected language: {lang}":
+        "Limbă detectată: {lang}",
+    "Translating with {engine}…":
+        "Se traduce cu {engine}…",
+    "Translated with {engine}. Detected: {lang}.":
+        "Tradus cu {engine}. Detectat: {lang}.",
+    "Translation failed. {error}":
+        "Traducerea a eșuat. {error}",
+    "Saved {name}":
+        "{name} salvat",
+    "No text yet. Turn on OCR in Settings › Text & translation, then scan again.":
+        "Încă nu există text. Activați OCR în Setări › Text și traducere, apoi scanați din nou.",
+    "Text of {name}":
+        "Textul din {name}",
+    "Looking for scanners ({drivers})…":
+        "Se caută scannere ({drivers})…",
+    "Looking for scanners… {count} found so far.":
+        "Se caută scannere… {count} găsite până acum.",
+    "Ready. Load the paper and click Scan.":
+        "Gata. Puneți hârtia și faceți clic pe Scanează.",
+    "Search stopped. Click Search again when you are ready.":
+        "Căutare oprită. Faceți clic pe Caută din nou când sunteți gata.",
+    "No scanners found. Check the cable or Wi-Fi and the installed driver (Settings › Scanner › Driver setup).":
+        "Nu s-au găsit scannere. Verificați cablul sau Wi-Fi-ul și driverul instalat (Setări › Scanner › Instalare driver).",
+    "The NAPS2 scanner engine was not found. Close and reopen the app to install it automatically.":
+        "Motorul de scanare NAPS2 nu a fost găsit. Închideți și redeschideți aplicația pentru a-l instala automat.",
+    "Scanning a quick low-resolution preview…":
+        "Se scanează o previzualizare rapidă la rezoluție mică…",
+    "Check the page placement, then scan at your chosen resolution.":
+        "Verificați poziția paginii, apoi scanați la rezoluția aleasă.",
+    "Flatbed preview":
+        "Previzualizare geam",
+    "Back":
+        "Înapoi",
+    "Preview ready.":
+        "Previzualizare gata.",
+    "No preview was produced. Check the flatbed and scanner connection.":
+        "Nu s-a produs nicio previzualizare. Verificați geamul și conexiunea scannerului.",
+    "Scanning from {where}… Keep the scanner on until the file is saved.":
+        "Se scanează de pe {where}… Lăsați scannerul pornit până se salvează fișierul.",
+    "the flatbed":
+        "geam",
+    "the document feeder":
+        "alimentatorul de documente",
+    "the document feeder (both sides)":
+        "alimentatorul de documente (față-verso)",
+    " Recognising text (OCR)…":
+        " Se recunoaște textul (OCR)…",
+    "Downloading OCR languages ({langs}). One time only…":
+        "Se descarcă limbile OCR ({langs}). Doar o dată…",
+    "OCR languages could not be installed ({langs}). Scanning without OCR.":
+        "Limbile OCR nu au putut fi instalate ({langs}). Se scanează fără OCR.",
+    "Scan cancelled.":
+        "Scanare anulată.",
+    "The scanner is busy. Someone else may be using it. Wait a moment, then try again.":
+        "Scannerul este ocupat. Poate îl folosește altcineva. Așteptați puțin, apoi încercați din nou.",
+    "Windows could not reach the Canon scanner. Turn it on, make sure it is on the same Wi-Fi, and check it in Canon IJ Scan Utility, then retry.":
+        "Windows nu a putut contacta scannerul Canon. Porniți-l, verificați că este în aceeași rețea Wi-Fi și verificați-l în Canon IJ Scan Utility, apoi reîncercați.",
+    "Epson Scan 2 could not open the scanner. In Epson Scan 2 Utility, add or test its network address, then retry.":
+        "Epson Scan 2 nu a putut deschide scannerul. În Epson Scan 2 Utility, adăugați sau testați adresa sa de rețea, apoi reîncercați.",
+    "Scanner operation failed. {detail}":
+        "Operația scannerului a eșuat. {detail}",
+    "No pages were scanned. Check the paper and the scanner connection.":
+        "Nu s-a scanat nicio pagină. Verificați hârtia și conexiunea scannerului.",
+    "Could not save the scan. {error}":
+        "Scanarea nu a putut fi salvată. {error}",
+    "The scan was kept as {path}":
+        "Scanarea a fost păstrată ca {path}",
+    "✓ Saved {files} in {folder}":
+        "✓ S-a salvat {files} în {folder}",
+    "{count} JPG pages":
+        "{count} pagini JPG",
+    "text":
+        "text",
+    "Translating the text to {lang}…":
+        "Se traduce textul în {lang}…",
+    "✓ Translation saved: {name}":
+        "✓ Traducere salvată: {name}",
+    "Could not start NAPS2. {error}":
+        "NAPS2 nu a putut porni. {error}",
+    "Could not create {folder}. {error}\nChoose another folder in Settings › Scanning.":
+        "{folder} nu a putut fi creat. {error}\nAlegeți alt dosar în Setări › Scanare.",
+    "Save scan":
+        "Salvează scanarea",
+    "Scan in progress":
+        "Scanare în curs",
+    "A scan is running. Cancel it and close the app?":
+        "Rulează o scanare. O anulați și închideți aplicația?",
+    "JPG export needs PyMuPDF. Close and reopen the app to install it.":
+        "Exportul JPG necesită PyMuPDF. Închideți și redeschideți aplicația pentru a-l instala.",
+    "Checking GitHub for a newer version…":
+        "Se caută pe GitHub o versiune mai nouă…",
+    "Could not check for updates. {error}":
+        "Nu s-au putut căuta actualizări. {error}",
+    "You have the latest version (v{version}).":
+        "Aveți cea mai nouă versiune (v{version}).",
+    "Update available":
+        "Actualizare disponibilă",
+    "{app} {version} is available (you have v{current}).\n\nWhat's new:\n{notes}\n\nDownload and install it now?":
+        "{app} {version} este disponibilă (aveți v{current}).\n\nCe este nou:\n{notes}\n\nO descărcați și o instalați acum?",
+    "No release notes.":
+        "Fără note de versiune.",
+    "Update {version} is waiting in Help.":
+        "Actualizarea {version} vă așteaptă în Ajutor.",
+    "Finish the scan first, then install the update from Help.":
+        "Terminați mai întâi scanarea, apoi instalați actualizarea din Ajutor.",
+    "Downloading {version} from GitHub…":
+        "Se descarcă {version} de pe GitHub…",
+    "Update failed. {error}":
+        "Actualizarea a eșuat. {error}",
+    "macOS is running the app from a temporary read-only copy. Drag What the Scan into Applications, open it from there, then update again.":
+        "macOS rulează aplicația dintr-o copie temporară doar în citire. Trageți What the Scan în Aplicații, deschideți-o de acolo, apoi actualizați din nou.",
+    "The app's folder can't be written to. Move the app to a folder you own (or Applications) and update again.":
+        "Nu se poate scrie în dosarul aplicației. Mutați aplicația într-un dosar al dvs. (sau în Aplicații) și actualizați din nou.",
+    "Update failed":
+        "Actualizarea a eșuat",
+    "{error}\n\nOpen the release page to download it by hand?":
+        "{error}\n\nDeschideți pagina versiunii pentru a o descărca manual?",
+    "Updated to {version}. Restarting…":
+        "Actualizat la {version}. Se repornește…",
+    "Choose a model to find its driver.":
+        "Alegeți un model pentru a-i găsi driverul.",
+    "Install driver":
+        "Instalare driver",
+    "Download and install the official {label} now?\n\nWindows may ask for permission. Choose No to open the support page instead.":
+        "Descărcați și instalați acum driverul oficial {label}?\n\nWindows poate cere permisiunea. Alegeți Nu pentru a deschide în schimb pagina de asistență.",
+    "Preparing the official {label} installer…":
+        "Se pregătește programul oficial de instalare {label}…",
+    "{label} installed. Looking for scanners…":
+        "{label} instalat. Se caută scannere…",
+    "Driver setup failed. {error}\nThe support page is opening so you can install it by hand.":
+        "Instalarea driverului a eșuat. {error}\nSe deschide pagina de asistență ca să-l puteți instala manual.",
+    "Searching the local network for scanners (Epson, Canon, HP, AirPrint)…":
+        "Se caută scannere în rețeaua locală (Epson, Canon, HP, AirPrint)…",
+    "answered as a network (eSCL) scanner ✓":
+        "a răspuns ca scanner de rețea (eSCL) ✓",
+    "This scanner has: {sources}":
+        "Acest scanner are: {sources}",
+    "Network discovery failed. {error}":
+        "Căutarea în rețea a eșuat. {error}",
+    "Select your scanner's network address.":
+        "Selectați adresa de rețea a scannerului.",
+    "No scanner replied on this local network.":
+        "Niciun scanner nu a răspuns în această rețea locală.",
+    "answered as a Canon scanner ✓":
+        "a răspuns ca scanner Canon ✓",
+    "responds on the scanner port ✓":
+        "răspunde pe portul scannerului ✓",
+    "did not respond on the scanner port":
+        "nu a răspuns pe portul scannerului",
+    "{brand} {ip} {state}. Scanning uses the driver chosen above.":
+        "{brand} {ip} {state}. Scanarea folosește driverul ales mai sus.",
+}
+
+UI_CS = {
+    "{phone} (browser)": "{phone} (prohlížeč)",
+    "AirDrop":
+        "AirDrop",
+    "Send with AirDrop to an iPhone, iPad or Mac nearby":
+        "Odeslat přes AirDrop do iPhonu, iPadu nebo Macu v okolí",
+    "AirDrop is open: choose the iPhone or Mac.":
+        "AirDrop je otevřený: vyberte iPhone nebo Mac.",
+    "AirDrop is not available on this Mac. Turn on Wi-Fi and Bluetooth.":
+        "AirDrop není na tomto Macu k dispozici. Zapněte Wi-Fi a Bluetooth.",
+    "So that your phone can send to this computer, Windows Firewall must let it in.\n\nAllow it now? Windows asks for permission once (only phones on your own network, only the ports of {app}).":
+        "Aby mohl telefon posílat soubory do tohoto počítače, musí to povolit brána Windows Firewall.\n\nPovolit nyní? Windows požádá o oprávnění jen jednou (jen telefony ve vaší síti, jen porty aplikace {app}).",
+    "Waiting for Windows permission (firewall)…":
+        "Čekám na oprávnění Windows (firewall)…",
+    "✓ Windows Firewall lets your phone in now.":
+        "✓ Brána Windows Firewall nyní telefon propouští.",
+    "Windows Firewall was not changed, so the phone may not be able to send to this computer.":
+        "Brána Windows Firewall nebyla změněna, takže telefon možná nebude moci posílat soubory do tohoto počítače.",
+    "LocalSend for the phone":
+        "LocalSend pro telefon",
+    "Trying Epson's other download server…":
+        "Zkouším druhý server pro stahování Epson…",
+    "{name} answers on the network ({ip}), but its scanner driver is not installed.":
+        "{name} odpovídá v síti ({ip}), ale jeho ovladač skeneru není nainstalován.",
+    "Scanner driver missing":
+        "Chybí ovladač skeneru",
+    "{name} was found on the network ({ip}), but its scanner driver is not installed, so the app cannot scan with it.\n\nInstall the official {label} now? It is downloaded and installed automatically (a few minutes; Windows may ask for permission).":
+        "{name} byl nalezen v síti ({ip}), ale jeho ovladač skeneru není nainstalován, takže s ním aplikace nemůže skenovat.\n\nNainstalovat nyní oficiální {label}? Stáhne se a nainstaluje automaticky (pár minut; Windows může požádat o oprávnění).",
+    "Phone":
+        "Telefon",
+    "Send to your phone or receive photos from it, on the same Wi-Fi (LocalSend app or QR code)":
+        "Odeslat do telefonu nebo z něj přijmout fotky, ve stejné Wi-Fi (aplikace LocalSend nebo QR kód)",
+    "Send scans to your phone and receive photos from it, on the same Wi-Fi.":
+        "Posílejte skeny do telefonu a přijímejte z něj fotky, ve stejné Wi-Fi.",
+    "Receiving from the phone":
+        "Příjem z telefonu",
+    "Keep receiving on while the app is open":
+        "Nechat příjem zapnutý, dokud je aplikace otevřená",
+    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
+        "Když je vypnuto, příjem se otevře na {minutes} minut při každém stisku Telefon.",
+    "Phone photos":
+        "Fotky z telefonu",
+    "Just save them in the scans folder":
+        "Jen je uložit do složky se skeny",
+    "Make a PDF, like a scan (OCR, Word)":
+        "Vytvořit PDF jako sken (OCR, Word)",
+    "Name on the phone":
+        "Název v telefonu",
+    "How it works":
+        "Jak to funguje",
+    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. Telefon a počítač ve stejné Wi-Fi.\n2. Nainstalujte do telefonu bezplatnou aplikaci LocalSend, nebo jen naskenujte QR kód.\n3. Stiskněte Telefon vedle Náhledu, vyberte telefon a Odeslat.\n4. Odeslání z telefonu: v LocalSend vyberte „{name}“, nebo použijte stránku z QR kódu.",
+    "Get LocalSend":
+        "Získat LocalSend",
+    "Idle · making a PDF from phone photos":
+        "Nečinný · vytvářím PDF z fotek z telefonu",
+    "✓ Made {file} from {count} phone photo(s)":
+        "✓ Vytvořeno {file} z {count} fotek z telefonu",
+    "Windows may now ask whether {app} can use the network.\n\nTick “Private networks” and click Allow, so your phone can reach this computer.":
+        "Windows se teď možná zeptá, zda smí {app} používat síť.\n\nZaškrtněte „Soukromé sítě“ a klikněte na Povolit, aby se telefon dostal k tomuto počítači.",
+    "The phone connection could not start. Another program may be using the network ports {ports}.":
+        "Spojení s telefonem se nepodařilo spustit. Síťové porty {ports} možná používá jiný program.",
+    "Receiving is off. Press Phone to open it again.":
+        "Příjem je vypnutý. Stiskněte Telefon pro jeho opětovné otevření.",
+    "Receiving is on: the phone can send files to “{name}”.":
+        "Příjem je zapnutý: telefon může posílat soubory do „{name}“.",
+    "Receiving is on for {time}: the phone can send files to “{name}”.":
+        "Příjem je zapnutý ještě {time}: telefon může posílat soubory do „{name}“.",
+    "… and {count} more":
+        "… a dalších {count}",
+    "Files from a phone":
+        "Soubory z telefonu",
+    "“{sender}” wants to send {count} file(s):":
+        "„{sender}“ chce poslat {count} soubor(ů):",
+    "They will be saved in {folder}.":
+        "Budou uloženy do {folder}.",
+    "Accept":
+        "Přijmout",
+    "Decline":
+        "Odmítnout",
+    "Receiving files from {sender}…":
+        "Přijímám soubory od {sender}…",
+    "✓ Received {count} file(s) from {sender} in {folder}":
+        "✓ Přijato {count} soubor(ů) od {sender} do {folder}",
+    "The photos were saved as they are, because a scan is running.":
+        "Fotky byly uloženy tak, jak jsou, protože právě probíhá skenování.",
+    "Making a PDF from {count} phone photo(s)…":
+        "Vytvářím PDF z {count} fotek z telefonu…",
+    "This link has expired. Scan the QR code again.":
+        "Platnost tohoto odkazu vypršela. Naskenujte QR kód znovu.",
+    "No scan yet. Scan something first, then reload this page.":
+        "Zatím žádný sken. Nejprve něco naskenujte a pak tuto stránku obnovte.",
+    "Waiting for the computer to accept…":
+        "Čekám, až počítač přijme…",
+    "The computer declined the files.":
+        "Počítač soubory odmítl.",
+    "The computer is receiving other files. Try again in a moment.":
+        "Počítač právě přijímá jiné soubory. Zkuste to za chvíli znovu.",
+    "Sending failed. Check that the phone is on the same Wi-Fi and try again.":
+        "Odeslání selhalo. Zkontrolujte, že je telefon ve stejné Wi-Fi, a zkuste to znovu.",
+    "Sending {name}…":
+        "Odesílám {name}…",
+    "✓ Sent! The files are on the computer.":
+        "✓ Odesláno! Soubory jsou v počítači.",
+    "1 · Get the scan on this phone":
+        "1 · Stáhnout sken do tohoto telefonu",
+    "Reload":
+        "Obnovit",
+    "2 · Send photos or files to the computer":
+        "2 · Poslat fotky nebo soubory do počítače",
+    "Take a photo or choose files":
+        "Vyfotit nebo vybrat soubory",
+    "Send to your phone":
+        "Odeslat do telefonu",
+    "Phone and computer must be on the same Wi-Fi.":
+        "Telefon a počítač musí být ve stejné Wi-Fi.",
+    "Choose other files…":
+        "Vybrat jiné soubory…",
+    "Phones with LocalSend":
+        "Telefony s LocalSend",
+    "Send":
+        "Odeslat",
+    "No LocalSend? Scan this":
+        "Nemáte LocalSend? Naskenujte tohle",
+    "Point the phone camera at the code. A page opens where you can download the scan and send photos to this computer.":
+        "Namiřte fotoaparát telefonu na kód. Otevře se stránka, kde můžete stáhnout sken a poslat fotky do tohoto počítače.",
+    "QR code not available.":
+        "QR kód není k dispozici.",
+    "To send: {names}  ({size})":
+        "K odeslání: {names}  ({size})",
+    "Nothing to send yet. Scan first, or choose files.":
+        "Zatím není co odeslat. Nejprve skenujte, nebo vyberte soubory.",
+    "Choose files for the phone":
+        "Vyberte soubory pro telefon",
+    "Looking for phones… Open LocalSend on the phone.":
+        "Hledám telefony… Otevřete v telefonu LocalSend.",
+    "No phone found.\n1. Is the phone on the same Wi-Fi?\n2. Open the LocalSend app on the phone (free, Play Store / App Store).\n3. Or simply scan the QR code on the right.":
+        "Nebyl nalezen žádný telefon.\n1. Je telefon ve stejné Wi-Fi?\n2. Otevřete v telefonu aplikaci LocalSend (zdarma, Play Store / App Store).\n3. Nebo jen naskenujte QR kód vpravo.",
+    "Waiting for {phone} to accept… Tap Accept on the phone.":
+        "Čekám, až {phone} přijme… Klepněte v telefonu na Přijmout.",
+    "Sending to {phone}… {value}%":
+        "Odesílám do {phone}… {value} %",
+    "{phone} declined the files.":
+        "{phone} soubory odmítl.",
+    "{phone} is busy with another transfer. Try again in a moment.":
+        "{phone} má rozpracovaný jiný přenos. Zkuste to za chvíli znovu.",
+    "{phone} asks for a PIN. Turn off the PIN in LocalSend settings on the phone.":
+        "{phone} žádá PIN. Vypněte PIN v nastavení LocalSend v telefonu.",
+    "Could not reach {phone}. Is LocalSend open and on the same Wi-Fi?":
+        "{phone} není dostupný. Je LocalSend otevřený a ve stejné Wi-Fi?",
+    "Sending cancelled.":
+        "Odesílání zrušeno.",
+    "✓ Sent {count} file(s) to {phone}.":
+        "✓ Odesláno {count} soubor(ů) do {phone}.",
+    "Sending failed. {error}":
+        "Odeslání selhalo. {error}",
+    "Also save an editable document (text from OCR)":
+        "Uložit také upravitelný dokument (text z OCR)",
+    "Document":
+        "Dokument",
+    "Word (.docx) · Microsoft Word":
+        "Word (.docx) · Microsoft Word",
+    "OpenDocument (.odt) · LibreOffice on Mac / Linux":
+        "OpenDocument (.odt) · LibreOffice na Macu / Linuxu",
+    "Word export needs python-docx. Close and reopen the app to install it.":
+        "Export do Wordu potřebuje python-docx. Zavřete a znovu otevřete aplikaci, aby se nainstaloval.",
+    "What to save, the paper and where the files go.":
+        "Co ukládat, papír a kam jdou soubory.",
+    "Recognise text in your scans and translate it.":
+        "Rozpoznejte text ve skenech a přeložte ho.",
+    "Language, appearance and updates.":
+        "Jazyk, vzhled a aktualizace.",
+    "Output":
+        "Výstup",
+    "Paper":
+        "Papír",
+    "Saving":
+        "Ukládání",
+    "Text recognition (OCR)":
+        "Rozpoznávání textu (OCR)",
+    "Appearance":
+        "Vzhled",
+    "Reset":
+        "Obnovit výchozí",
+    "Settings":
+        "Nastavení",
+    "Help":
+        "Nápověda",
+    "Ready":
+        "Připraveno",
+    "Idle":
+        "Nečinný",
+    "Scan":
+        "Skenovat",
+    "Preview":
+        "Náhled",
+    "Text":
+        "Text",
+    "Open last":
+        "Otevřít poslední",
+    "Open folder":
+        "Otevřít složku",
+    "Cancel":
+        "Zrušit",
+    "Stop search":
+        "Zastavit hledání",
+    "Search again":
+        "Hledat znovu",
+    "Change…":
+        "Změnit…",
+    "Starting…":
+        "Spouštím…",
+    "Looking for scanners…":
+        "Hledám skenery…",
+    "Checking every driver at the same time.":
+        "Kontroluji všechny ovladače najednou.",
+    "Connected to {name}":
+        "Připojeno k {name}",
+    "via {driver}":
+        "přes {driver}",
+    "{brand} at {ip}":
+        "{brand} na {ip}",
+    "{count} more in Settings":
+        "dalších {count} v Nastavení",
+    "No scanner connected":
+        "Není připojen žádný skener",
+    "Turn the scanner on, check the USB cable or Wi-Fi, then click Search again.":
+        "Zapněte skener, zkontrolujte kabel USB nebo Wi-Fi a klikněte na Hledat znovu.",
+    "saves to {folder}":
+        "ukládá do {folder}",
+    "asks for a file name":
+        "ptá se na název souboru",
+    "OCR":
+        "OCR",
+    "OCR off":
+        "OCR vypnuto",
+    "translate → {lang}":
+        "přeložit → {lang}",
+    "Scan and save in the format chosen in Settings (Ctrl+S)":
+        "Naskenovat a uložit ve formátu zvoleném v Nastavení (Ctrl+S)",
+    "Quick low-resolution look at the flatbed (Ctrl+P)":
+        "Rychlý náhled skla v nízkém rozlišení (Ctrl+P)",
+    "Recognised text and translation of the last scan (Ctrl+T)":
+        "Rozpoznaný text a překlad posledního skenu (Ctrl+T)",
+    "Open the last scanned file":
+        "Otevřít naposledy naskenovaný soubor",
+    "Open the folder with your scans":
+        "Otevřít složku se skeny",
+    "Stop the scan or search (Esc)":
+        "Zastavit skenování nebo hledání (Esc)",
+    "Look for scanners again (F5)":
+        "Znovu hledat skenery (F5)",
+    "Choose another scanner or change scan settings":
+        "Vybrat jiný skener nebo změnit nastavení skenování",
+    "Scanner, scanning, text and appearance settings (Ctrl+,)":
+        "Nastavení skeneru, skenování, textu a vzhledu (Ctrl+,)",
+    "Quick guide":
+        "Stručný návod",
+    "Check for updates…":
+        "Zkontrolovat aktualizace…",
+    "Project page on GitHub":
+        "Stránka projektu na GitHubu",
+    "About {app}":
+        "O aplikaci {app}",
+    "Update to {version}…":
+        "Aktualizovat na {version}…",
+    "In use · scanning on this PC":
+        "Používá se · skenuje se na tomto PC",
+    "In use by {who}":
+        "Používá {who}",
+    "{user} on {host}":
+        "{user} na {host}",
+    "Started at {time}. Wait until the light turns green.":
+        "Začalo v {time}. Počkejte, až kontrolka zezelená.",
+    "In use · scanner is busy":
+        "Používá se · skener je zaneprázdněn",
+    "The scanner reports that it is scanning right now.":
+        "Skener hlásí, že právě skenuje.",
+    "Idle · searching…":
+        "Nečinný · hledám…",
+    "Idle · no scanner":
+        "Nečinný · žádný skener",
+    "No scanner is connected yet.":
+        "Zatím není připojen žádný skener.",
+    "Idle · scanner on standby":
+        "Nečinný · skener v pohotovosti",
+    "The scanner reports that it is stopped or offline.":
+        "Skener hlásí, že je zastavený nebo offline.",
+    "The scanner is free. You can scan.":
+        "Skener je volný. Můžete skenovat.",
+    "Idle · installing OCR…":
+        "Nečinný · instaluji OCR…",
+    "The scanner is free now. You can scan.":
+        "Skener je teď volný. Můžete skenovat.",
+    "Scanner in use":
+        "Skener se používá",
+    "The scanner is in use right now.\n\n{text}.\n{tip}\n\nPlease wait until the light at the top turns green, then try again.\nThis app will beep when the scanner is free.":
+        "Skener se právě používá.\n\n{text}.\n{tip}\n\nPočkejte, až kontrolka nahoře zezelená, a zkuste to znovu.\nAplikace pípne, až bude skener volný.",
+    "Scanner in use: {text}. Wait for the green light.":
+        "Skener se používá: {text}. Počkejte na zelenou kontrolku.",
+    "Scanner":
+        "Skener",
+    "Scanning":
+        "Skenování",
+    "Text & translation":
+        "Text a překlad",
+    "General":
+        "Obecné",
+    "Done":
+        "Hotovo",
+    "Driver":
+        "Ovladač",
+    "Model":
+        "Model",
+    "Network":
+        "Síť",
+    "Auto (all drivers)":
+        "Auto (všechny ovladače)",
+    "No scanner found yet":
+        "Zatím nebyl nalezen žádný skener",
+    "Refresh":
+        "Obnovit",
+    "Driver setup":
+        "Instalace ovladače",
+    "Find on network":
+        "Najít v síti",
+    "Web panel":
+        "Webový panel",
+    "Find your model’s driver":
+        "Najděte ovladač pro svůj model",
+    "No network reply yet":
+        "Zatím žádná odpověď ze sítě",
+    "Everything here is found automatically. Change it only if the wrong scanner is chosen.":
+        "Vše zde se zjistí automaticky. Měňte to jen tehdy, je-li vybrán špatný skener.",
+    "Save as":
+        "Uložit jako",
+    "one PDF with every page":
+        "jedno PDF se všemi stránkami",
+    "one JPG image per page":
+        "jeden obrázek JPG na stránku",
+    "the PDF and the JPG images from one scan":
+        "PDF i obrázky JPG z jednoho skenu",
+    "Paper source":
+        "Zdroj papíru",
+    "Auto · feeder if loaded, else flatbed":
+        "Auto · podavač, je-li v něm papír, jinak sklo",
+    "Flatbed (glass)":
+        "Sklo (plochý skener)",
+    "Document feeder":
+        "Podavač dokumentů",
+    "Document feeder · both sides":
+        "Podavač dokumentů · oboustranně",
+    "Paper size":
+        "Velikost papíru",
+    "Resolution":
+        "Rozlišení",
+    "150 dpi · fast, small file":
+        "150 dpi · rychlé, malý soubor",
+    "300 dpi · recommended":
+        "300 dpi · doporučeno",
+    "600 dpi · fine detail":
+        "600 dpi · jemné detaily",
+    "Colour":
+        "Barva",
+    "Greyscale":
+        "Odstíny šedi",
+    "Black and white":
+        "Černobíle",
+    "Save to":
+        "Uložit do",
+    "Browse…":
+        "Procházet…",
+    "Ask for a file name every time":
+        "Pokaždé se ptát na název souboru",
+    "Open the file after scanning":
+        "Po naskenování soubor otevřít",
+    "Auto source":
+        "Auto zdroj",
+    "Flatbed":
+        "Sklo",
+    "Feeder":
+        "Podavač",
+    "Feeder · 2 sides":
+        "Podavač · 2 strany",
+    "Make PDFs searchable with OCR (text recognition)":
+        "Umožnit vyhledávání v PDF pomocí OCR (rozpoznávání textu)",
+    "OCR languages":
+        "Jazyky OCR",
+    "Auto · English + Greek + your system language":
+        "Auto · angličtina + řečtina + jazyk vašeho systému",
+    "Choose languages":
+        "Vybrat jazyky",
+    "Languages download automatically the first time they are used.":
+        "Jazyky se stáhnou automaticky při prvním použití.",
+    "Also save the text as a .txt file":
+        "Uložit text také jako soubor .txt",
+    "Translate automatically to":
+        "Automaticky překládat do",
+    "Off":
+        "Vypnuto",
+    "Translation service":
+        "Překladová služba",
+    "Google Translate (free)":
+        "Překladač Google (zdarma)",
+    "MyMemory (free)":
+        "MyMemory (zdarma)",
+    "LibreTranslate (your server)":
+        "LibreTranslate (váš server)",
+    "LibreTranslate server":
+        "Server LibreTranslate",
+    "API key (optional)":
+        "Klíč API (volitelný)",
+    "Free services need internet. Google falls back to MyMemory if it fails.":
+        "Bezplatné služby potřebují internet. Když Google selže, použije se MyMemory.",
+    "Theme":
+        "Motiv",
+    "Auto · follow Windows / system":
+        "Auto · podle Windows / systému",
+    "Light":
+        "Světlý",
+    "Dark":
+        "Tmavý",
+    "Language":
+        "Jazyk",
+    "Auto · system language":
+        "Auto · jazyk systému",
+    "Updates":
+        "Aktualizace",
+    "Check for updates automatically":
+        "Automaticky kontrolovat aktualizace",
+    "Check now":
+        "Zkontrolovat nyní",
+    "Reset everything to Auto":
+        "Vrátit vše na Auto",
+    "All settings are back to Auto.":
+        "Všechna nastavení jsou zpět na Auto.",
+    "Restart to change the language?":
+        "Restartovat kvůli změně jazyka?",
+    "The new language is used after a restart. Restart now?":
+        "Nový jazyk se použije po restartu. Restartovat nyní?",
+    "Save scans to":
+        "Ukládat skeny do",
+    "Recognised text":
+        "Rozpoznaný text",
+    "Translation":
+        "Překlad",
+    "Translate":
+        "Přeložit",
+    "From":
+        "Z",
+    "To":
+        "Do",
+    "Auto-detect":
+        "Rozpoznat automaticky",
+    "Copy":
+        "Kopírovat",
+    "Save .txt":
+        "Uložit .txt",
+    "Close":
+        "Zavřít",
+    "Copied.":
+        "Zkopírováno.",
+    "Detected language: {lang}":
+        "Rozpoznaný jazyk: {lang}",
+    "Translating with {engine}…":
+        "Překládám pomocí {engine}…",
+    "Translated with {engine}. Detected: {lang}.":
+        "Přeloženo pomocí {engine}. Rozpoznáno: {lang}.",
+    "Translation failed. {error}":
+        "Překlad selhal. {error}",
+    "Saved {name}":
+        "Uloženo {name}",
+    "No text yet. Turn on OCR in Settings › Text & translation, then scan again.":
+        "Zatím žádný text. Zapněte OCR v Nastavení › Text a překlad a skenujte znovu.",
+    "Text of {name}":
+        "Text z {name}",
+    "Looking for scanners ({drivers})…":
+        "Hledám skenery ({drivers})…",
+    "Looking for scanners… {count} found so far.":
+        "Hledám skenery… zatím nalezeno {count}.",
+    "Ready. Load the paper and click Scan.":
+        "Připraveno. Vložte papír a klikněte na Skenovat.",
+    "Search stopped. Click Search again when you are ready.":
+        "Hledání zastaveno. Až budete připraveni, klikněte na Hledat znovu.",
+    "No scanners found. Check the cable or Wi-Fi and the installed driver (Settings › Scanner › Driver setup).":
+        "Nebyly nalezeny žádné skenery. Zkontrolujte kabel nebo Wi-Fi a nainstalovaný ovladač (Nastavení › Skener › Instalace ovladače).",
+    "The NAPS2 scanner engine was not found. Close and reopen the app to install it automatically.":
+        "Skenovací jádro NAPS2 nebylo nalezeno. Zavřete a znovu otevřete aplikaci, aby se nainstalovalo automaticky.",
+    "Scanning a quick low-resolution preview…":
+        "Skenuji rychlý náhled v nízkém rozlišení…",
+    "Check the page placement, then scan at your chosen resolution.":
+        "Zkontrolujte umístění stránky a pak skenujte ve zvoleném rozlišení.",
+    "Flatbed preview":
+        "Náhled skla",
+    "Back":
+        "Zpět",
+    "Preview ready.":
+        "Náhled je připraven.",
+    "No preview was produced. Check the flatbed and scanner connection.":
+        "Náhled se nevytvořil. Zkontrolujte sklo a připojení skeneru.",
+    "Scanning from {where}… Keep the scanner on until the file is saved.":
+        "Skenuji z {where}… Nechte skener zapnutý, dokud se soubor neuloží.",
+    "the flatbed":
+        "skla",
+    "the document feeder":
+        "podavače dokumentů",
+    "the document feeder (both sides)":
+        "podavače dokumentů (oboustranně)",
+    " Recognising text (OCR)…":
+        " Rozpoznávám text (OCR)…",
+    "Downloading OCR languages ({langs}). One time only…":
+        "Stahuji jazyky OCR ({langs}). Jen jednou…",
+    "OCR languages could not be installed ({langs}). Scanning without OCR.":
+        "Jazyky OCR se nepodařilo nainstalovat ({langs}). Skenuji bez OCR.",
+    "Scan cancelled.":
+        "Skenování zrušeno.",
+    "The scanner is busy. Someone else may be using it. Wait a moment, then try again.":
+        "Skener je zaneprázdněn. Možná ho používá někdo jiný. Chvíli počkejte a zkuste to znovu.",
+    "Windows could not reach the Canon scanner. Turn it on, make sure it is on the same Wi-Fi, and check it in Canon IJ Scan Utility, then retry.":
+        "Windows se nepodařilo spojit se skenerem Canon. Zapněte ho, ověřte, že je ve stejné Wi-Fi, zkontrolujte ho v Canon IJ Scan Utility a zkuste to znovu.",
+    "Epson Scan 2 could not open the scanner. In Epson Scan 2 Utility, add or test its network address, then retry.":
+        "Epson Scan 2 nemohl otevřít skener. V Epson Scan 2 Utility přidejte nebo otestujte jeho síťovou adresu a zkuste to znovu.",
+    "Scanner operation failed. {detail}":
+        "Operace skeneru selhala. {detail}",
+    "No pages were scanned. Check the paper and the scanner connection.":
+        "Nebyly naskenovány žádné stránky. Zkontrolujte papír a připojení skeneru.",
+    "Could not save the scan. {error}":
+        "Sken se nepodařilo uložit. {error}",
+    "The scan was kept as {path}":
+        "Sken byl ponechán jako {path}",
+    "✓ Saved {files} in {folder}":
+        "✓ Uloženo {files} do {folder}",
+    "{count} JPG pages":
+        "{count} stránek JPG",
+    "text":
+        "text",
+    "Translating the text to {lang}…":
+        "Překládám text do jazyka {lang}…",
+    "✓ Translation saved: {name}":
+        "✓ Překlad uložen: {name}",
+    "Could not start NAPS2. {error}":
+        "NAPS2 se nepodařilo spustit. {error}",
+    "Could not create {folder}. {error}\nChoose another folder in Settings › Scanning.":
+        "Nelze vytvořit {folder}. {error}\nVyberte jinou složku v Nastavení › Skenování.",
+    "Save scan":
+        "Uložit sken",
+    "Scan in progress":
+        "Probíhá skenování",
+    "A scan is running. Cancel it and close the app?":
+        "Probíhá skenování. Zrušit ho a zavřít aplikaci?",
+    "JPG export needs PyMuPDF. Close and reopen the app to install it.":
+        "Export do JPG potřebuje PyMuPDF. Zavřete a znovu otevřete aplikaci, aby se nainstaloval.",
+    "Checking GitHub for a newer version…":
+        "Hledám na GitHubu novější verzi…",
+    "Could not check for updates. {error}":
+        "Aktualizace nelze zkontrolovat. {error}",
+    "You have the latest version (v{version}).":
+        "Máte nejnovější verzi (v{version}).",
+    "Update available":
+        "Je k dispozici aktualizace",
+    "{app} {version} is available (you have v{current}).\n\nWhat's new:\n{notes}\n\nDownload and install it now?":
+        "{app} {version} je k dispozici (máte v{current}).\n\nNovinky:\n{notes}\n\nStáhnout a nainstalovat nyní?",
+    "No release notes.":
+        "Bez poznámek k verzi.",
+    "Update {version} is waiting in Help.":
+        "Aktualizace {version} čeká v Nápovědě.",
+    "Finish the scan first, then install the update from Help.":
+        "Nejprve dokončete skenování, pak nainstalujte aktualizaci z Nápovědy.",
+    "Downloading {version} from GitHub…":
+        "Stahuji {version} z GitHubu…",
+    "Update failed. {error}":
+        "Aktualizace selhala. {error}",
+    "macOS is running the app from a temporary read-only copy. Drag What the Scan into Applications, open it from there, then update again.":
+        "macOS spouští aplikaci z dočasné kopie jen pro čtení. Přetáhněte What the Scan do Aplikací, otevřete ji odtud a aktualizujte znovu.",
+    "The app's folder can't be written to. Move the app to a folder you own (or Applications) and update again.":
+        "Do složky aplikace nelze zapisovat. Přesuňte aplikaci do své složky (nebo do Aplikací) a aktualizujte znovu.",
+    "Update failed":
+        "Aktualizace selhala",
+    "{error}\n\nOpen the release page to download it by hand?":
+        "{error}\n\nOtevřít stránku vydání a stáhnout ji ručně?",
+    "Updated to {version}. Restarting…":
+        "Aktualizováno na {version}. Restartuji…",
+    "Choose a model to find its driver.":
+        "Vyberte model, abyste našli jeho ovladač.",
+    "Install driver":
+        "Instalace ovladače",
+    "Download and install the official {label} now?\n\nWindows may ask for permission. Choose No to open the support page instead.":
+        "Stáhnout a nainstalovat nyní oficiální {label}?\n\nWindows může požádat o oprávnění. Zvolte Ne, chcete-li místo toho otevřít stránku podpory.",
+    "Preparing the official {label} installer…":
+        "Připravuji oficiální instalátor {label}…",
+    "{label} installed. Looking for scanners…":
+        "{label} nainstalován. Hledám skenery…",
+    "Driver setup failed. {error}\nThe support page is opening so you can install it by hand.":
+        "Instalace ovladače selhala. {error}\nOtevírá se stránka podpory, abyste ho mohli nainstalovat ručně.",
+    "Searching the local network for scanners (Epson, Canon, HP, AirPrint)…":
+        "Hledám skenery v místní síti (Epson, Canon, HP, AirPrint)…",
+    "answered as a network (eSCL) scanner ✓":
+        "odpověděl jako síťový skener (eSCL) ✓",
+    "This scanner has: {sources}":
+        "Tento skener má: {sources}",
+    "Network discovery failed. {error}":
+        "Hledání v síti selhalo. {error}",
+    "Select your scanner's network address.":
+        "Vyberte síťovou adresu svého skeneru.",
+    "No scanner replied on this local network.":
+        "V této místní síti neodpověděl žádný skener.",
+    "answered as a Canon scanner ✓":
+        "odpověděl jako skener Canon ✓",
+    "responds on the scanner port ✓":
+        "odpovídá na portu skeneru ✓",
+    "did not respond on the scanner port":
+        "neodpověděl na portu skeneru",
+    "{brand} {ip} {state}. Scanning uses the driver chosen above.":
+        "{brand} {ip} {state}. Skenování používá ovladač zvolený výše.",
+}
+
+UI_RU = {
+    "{phone} (browser)": "{phone} (браузер)",
+    "AirDrop":
+        "AirDrop",
+    "Send with AirDrop to an iPhone, iPad or Mac nearby":
+        "Отправить через AirDrop на iPhone, iPad или Mac поблизости",
+    "AirDrop is open: choose the iPhone or Mac.":
+        "AirDrop открыт: выберите iPhone или Mac.",
+    "AirDrop is not available on this Mac. Turn on Wi-Fi and Bluetooth.":
+        "AirDrop недоступен на этом Mac. Включите Wi-Fi и Bluetooth.",
+    "So that your phone can send to this computer, Windows Firewall must let it in.\n\nAllow it now? Windows asks for permission once (only phones on your own network, only the ports of {app}).":
+        "Чтобы телефон мог отправлять файлы на этот компьютер, это должен разрешить брандмауэр Windows.\n\nРазрешить сейчас? Windows запросит разрешение один раз (только телефоны в вашей сети, только порты {app}).",
+    "Waiting for Windows permission (firewall)…":
+        "Ожидание разрешения Windows (брандмауэр)…",
+    "✓ Windows Firewall lets your phone in now.":
+        "✓ Брандмауэр Windows теперь пропускает ваш телефон.",
+    "Windows Firewall was not changed, so the phone may not be able to send to this computer.":
+        "Брандмауэр Windows не изменён, поэтому телефон, возможно, не сможет отправлять файлы на этот компьютер.",
+    "LocalSend for the phone":
+        "LocalSend для телефона",
+    "Trying Epson's other download server…":
+        "Пробую другой сервер загрузки Epson…",
+    "{name} answers on the network ({ip}), but its scanner driver is not installed.":
+        "{name} отвечает в сети ({ip}), но драйвер сканера не установлен.",
+    "Scanner driver missing":
+        "Нет драйвера сканера",
+    "{name} was found on the network ({ip}), but its scanner driver is not installed, so the app cannot scan with it.\n\nInstall the official {label} now? It is downloaded and installed automatically (a few minutes; Windows may ask for permission).":
+        "{name} найден в сети ({ip}), но драйвер сканера не установлен, поэтому приложение не может с ним сканировать.\n\nУстановить официальный {label} сейчас? Он скачается и установится автоматически (несколько минут; Windows может запросить разрешение).",
+    "Phone":
+        "Телефон",
+    "Send to your phone or receive photos from it, on the same Wi-Fi (LocalSend app or QR code)":
+        "Отправить на телефон или получить с него фото в той же Wi-Fi (приложение LocalSend или QR-код)",
+    "Send scans to your phone and receive photos from it, on the same Wi-Fi.":
+        "Отправляйте сканы на телефон и получайте с него фото в той же Wi-Fi.",
+    "Receiving from the phone":
+        "Приём с телефона",
+    "Keep receiving on while the app is open":
+        "Держать приём включённым, пока приложение открыто",
+    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
+        "Если выключено, приём открывается на {minutes} мин. при каждом нажатии «Телефон».",
+    "Phone photos":
+        "Фото с телефона",
+    "Just save them in the scans folder":
+        "Просто сохранять в папку сканов",
+    "Make a PDF, like a scan (OCR, Word)":
+        "Делать PDF, как скан (OCR, Word)",
+    "Name on the phone":
+        "Имя на телефоне",
+    "How it works":
+        "Как это работает",
+    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. Телефон и компьютер в одной Wi-Fi.\n2. Установите на телефон бесплатное приложение LocalSend или просто отсканируйте QR-код.\n3. Нажмите «Телефон» рядом с «Предпросмотром», выберите телефон и «Отправить».\n4. Отправка с телефона: в LocalSend выберите «{name}» или используйте страницу QR-кода.",
+    "Get LocalSend":
+        "Скачать LocalSend",
+    "Idle · making a PDF from phone photos":
+        "Ожидание · создаю PDF из фото с телефона",
+    "✓ Made {file} from {count} phone photo(s)":
+        "✓ Создан {file} из фото с телефона: {count}",
+    "Windows may now ask whether {app} can use the network.\n\nTick “Private networks” and click Allow, so your phone can reach this computer.":
+        "Windows может спросить, можно ли {app} использовать сеть.\n\nОтметьте «Частные сети» и нажмите «Разрешить», чтобы телефон мог подключиться к этому компьютеру.",
+    "The phone connection could not start. Another program may be using the network ports {ports}.":
+        "Не удалось запустить связь с телефоном. Возможно, сетевые порты {ports} заняты другой программой.",
+    "Receiving is off. Press Phone to open it again.":
+        "Приём выключен. Нажмите «Телефон», чтобы открыть его снова.",
+    "Receiving is on: the phone can send files to “{name}”.":
+        "Приём включён: телефон может отправлять файлы на «{name}».",
+    "Receiving is on for {time}: the phone can send files to “{name}”.":
+        "Приём включён ещё {time}: телефон может отправлять файлы на «{name}».",
+    "… and {count} more":
+        "… и ещё {count}",
+    "Files from a phone":
+        "Файлы с телефона",
+    "“{sender}” wants to send {count} file(s):":
+        "«{sender}» хочет отправить файлов: {count}",
+    "They will be saved in {folder}.":
+        "Они будут сохранены в {folder}.",
+    "Accept":
+        "Принять",
+    "Decline":
+        "Отклонить",
+    "Receiving files from {sender}…":
+        "Получение файлов от {sender}…",
+    "✓ Received {count} file(s) from {sender} in {folder}":
+        "✓ Получено файлов от {sender}: {count}, в {folder}",
+    "The photos were saved as they are, because a scan is running.":
+        "Фото сохранены как есть, потому что идёт сканирование.",
+    "Making a PDF from {count} phone photo(s)…":
+        "Создаю PDF из фото с телефона: {count}…",
+    "This link has expired. Scan the QR code again.":
+        "Срок действия ссылки истёк. Отсканируйте QR-код снова.",
+    "No scan yet. Scan something first, then reload this page.":
+        "Сканов пока нет. Сначала отсканируйте что-нибудь, затем обновите страницу.",
+    "Waiting for the computer to accept…":
+        "Ждём, пока компьютер примет…",
+    "The computer declined the files.":
+        "Компьютер отклонил файлы.",
+    "The computer is receiving other files. Try again in a moment.":
+        "Компьютер принимает другие файлы. Повторите через минуту.",
+    "Sending failed. Check that the phone is on the same Wi-Fi and try again.":
+        "Отправка не удалась. Проверьте, что телефон в той же Wi-Fi, и повторите.",
+    "Sending {name}…":
+        "Отправка {name}…",
+    "✓ Sent! The files are on the computer.":
+        "✓ Отправлено! Файлы на компьютере.",
+    "1 · Get the scan on this phone":
+        "1 · Получить скан на этот телефон",
+    "Reload":
+        "Обновить",
+    "2 · Send photos or files to the computer":
+        "2 · Отправить фото или файлы на компьютер",
+    "Take a photo or choose files":
+        "Сделать фото или выбрать файлы",
+    "Send to your phone":
+        "Отправить на телефон",
+    "Phone and computer must be on the same Wi-Fi.":
+        "Телефон и компьютер должны быть в одной Wi-Fi.",
+    "Choose other files…":
+        "Выбрать другие файлы…",
+    "Phones with LocalSend":
+        "Телефоны с LocalSend",
+    "Send":
+        "Отправить",
+    "No LocalSend? Scan this":
+        "Нет LocalSend? Отсканируйте это",
+    "Point the phone camera at the code. A page opens where you can download the scan and send photos to this computer.":
+        "Наведите камеру телефона на код. Откроется страница, где можно скачать скан и отправить фото на этот компьютер.",
+    "QR code not available.":
+        "QR-код недоступен.",
+    "To send: {names}  ({size})":
+        "К отправке: {names}  ({size})",
+    "Nothing to send yet. Scan first, or choose files.":
+        "Пока нечего отправлять. Сначала отсканируйте или выберите файлы.",
+    "Choose files for the phone":
+        "Выберите файлы для телефона",
+    "Looking for phones… Open LocalSend on the phone.":
+        "Ищу телефоны… Откройте LocalSend на телефоне.",
+    "No phone found.\n1. Is the phone on the same Wi-Fi?\n2. Open the LocalSend app on the phone (free, Play Store / App Store).\n3. Or simply scan the QR code on the right.":
+        "Телефон не найден.\n1. Телефон в той же Wi-Fi?\n2. Откройте на телефоне приложение LocalSend (бесплатно, Play Store / App Store).\n3. Или просто отсканируйте QR-код справа.",
+    "Waiting for {phone} to accept… Tap Accept on the phone.":
+        "Ждём, пока {phone} примет… Нажмите «Принять» на телефоне.",
+    "Sending to {phone}… {value}%":
+        "Отправка на {phone}… {value}%",
+    "{phone} declined the files.":
+        "{phone} отклонил файлы.",
+    "{phone} is busy with another transfer. Try again in a moment.":
+        "{phone} занят другой передачей. Повторите через минуту.",
+    "{phone} asks for a PIN. Turn off the PIN in LocalSend settings on the phone.":
+        "{phone} просит PIN-код. Отключите PIN в настройках LocalSend на телефоне.",
+    "Could not reach {phone}. Is LocalSend open and on the same Wi-Fi?":
+        "Не удалось связаться с {phone}. LocalSend открыт и в той же Wi-Fi?",
+    "Sending cancelled.":
+        "Отправка отменена.",
+    "✓ Sent {count} file(s) to {phone}.":
+        "✓ Отправлено файлов на {phone}: {count}.",
+    "Sending failed. {error}":
+        "Отправка не удалась. {error}",
+    "Also save an editable document (text from OCR)":
+        "Сохранять также редактируемый документ (текст из OCR)",
+    "Document":
+        "Документ",
+    "Word (.docx) · Microsoft Word":
+        "Word (.docx) · Microsoft Word",
+    "OpenDocument (.odt) · LibreOffice on Mac / Linux":
+        "OpenDocument (.odt) · LibreOffice на Mac / Linux",
+    "Word export needs python-docx. Close and reopen the app to install it.":
+        "Для экспорта в Word нужен python-docx. Закройте и снова откройте приложение, чтобы установить его.",
+    "What to save, the paper and where the files go.":
+        "Что сохранять, бумага и куда идут файлы.",
+    "Recognise text in your scans and translate it.":
+        "Распознавание текста в сканах и его перевод.",
+    "Language, appearance and updates.":
+        "Язык, оформление и обновления.",
+    "Output":
+        "Вывод",
+    "Paper":
+        "Бумага",
+    "Saving":
+        "Сохранение",
+    "Text recognition (OCR)":
+        "Распознавание текста (OCR)",
+    "Appearance":
+        "Оформление",
+    "Reset":
+        "Сброс",
+    "Settings":
+        "Настройки",
+    "Help":
+        "Справка",
+    "Ready":
+        "Готов",
+    "Idle":
+        "Ожидание",
+    "Scan":
+        "Сканировать",
+    "Preview":
+        "Предпросмотр",
+    "Text":
+        "Текст",
+    "Open last":
+        "Последний файл",
+    "Open folder":
+        "Открыть папку",
+    "Cancel":
+        "Отмена",
+    "Stop search":
+        "Остановить поиск",
+    "Search again":
+        "Искать снова",
+    "Change…":
+        "Изменить…",
+    "Starting…":
+        "Запуск…",
+    "Looking for scanners…":
+        "Поиск сканеров…",
+    "Checking every driver at the same time.":
+        "Проверяю все драйверы одновременно.",
+    "Connected to {name}":
+        "Подключено к {name}",
+    "via {driver}":
+        "через {driver}",
+    "{brand} at {ip}":
+        "{brand} по адресу {ip}",
+    "{count} more in Settings":
+        "ещё {count} в Настройках",
+    "No scanner connected":
+        "Сканер не подключён",
+    "Turn the scanner on, check the USB cable or Wi-Fi, then click Search again.":
+        "Включите сканер, проверьте кабель USB или Wi-Fi, затем нажмите «Искать снова».",
+    "saves to {folder}":
+        "сохраняет в {folder}",
+    "asks for a file name":
+        "спрашивает имя файла",
+    "OCR":
+        "OCR",
+    "OCR off":
+        "OCR выкл.",
+    "translate → {lang}":
+        "перевод → {lang}",
+    "Scan and save in the format chosen in Settings (Ctrl+S)":
+        "Сканировать и сохранить в формате, выбранном в Настройках (Ctrl+S)",
+    "Quick low-resolution look at the flatbed (Ctrl+P)":
+        "Быстрый просмотр стекла в низком разрешении (Ctrl+P)",
+    "Recognised text and translation of the last scan (Ctrl+T)":
+        "Распознанный текст и перевод последнего скана (Ctrl+T)",
+    "Open the last scanned file":
+        "Открыть последний отсканированный файл",
+    "Open the folder with your scans":
+        "Открыть папку со сканами",
+    "Stop the scan or search (Esc)":
+        "Остановить сканирование или поиск (Esc)",
+    "Look for scanners again (F5)":
+        "Снова искать сканеры (F5)",
+    "Choose another scanner or change scan settings":
+        "Выбрать другой сканер или изменить настройки сканирования",
+    "Scanner, scanning, text and appearance settings (Ctrl+,)":
+        "Настройки сканера, сканирования, текста и оформления (Ctrl+,)",
+    "Quick guide":
+        "Краткое руководство",
+    "Check for updates…":
+        "Проверить обновления…",
+    "Project page on GitHub":
+        "Страница проекта на GitHub",
+    "About {app}":
+        "О программе {app}",
+    "Update to {version}…":
+        "Обновить до {version}…",
+    "In use · scanning on this PC":
+        "Занят · сканирование на этом ПК",
+    "In use by {who}":
+        "Занят: {who}",
+    "{user} on {host}":
+        "{user} на {host}",
+    "Started at {time}. Wait until the light turns green.":
+        "Начато в {time}. Подождите, пока индикатор станет зелёным.",
+    "In use · scanner is busy":
+        "Занят · сканер работает",
+    "The scanner reports that it is scanning right now.":
+        "Сканер сообщает, что сейчас сканирует.",
+    "Idle · searching…":
+        "Ожидание · поиск…",
+    "Idle · no scanner":
+        "Ожидание · нет сканера",
+    "No scanner is connected yet.":
+        "Сканер ещё не подключён.",
+    "Idle · scanner on standby":
+        "Ожидание · сканер в режиме ожидания",
+    "The scanner reports that it is stopped or offline.":
+        "Сканер сообщает, что остановлен или не в сети.",
+    "The scanner is free. You can scan.":
+        "Сканер свободен. Можно сканировать.",
+    "Idle · installing OCR…":
+        "Ожидание · установка OCR…",
+    "The scanner is free now. You can scan.":
+        "Сканер освободился. Можно сканировать.",
+    "Scanner in use":
+        "Сканер занят",
+    "The scanner is in use right now.\n\n{text}.\n{tip}\n\nPlease wait until the light at the top turns green, then try again.\nThis app will beep when the scanner is free.":
+        "Сканер сейчас используется.\n\n{text}.\n{tip}\n\nПодождите, пока индикатор вверху станет зелёным, и повторите.\nПриложение подаст сигнал, когда сканер освободится.",
+    "Scanner in use: {text}. Wait for the green light.":
+        "Сканер занят: {text}. Дождитесь зелёного индикатора.",
+    "Scanner":
+        "Сканер",
+    "Scanning":
+        "Сканирование",
+    "Text & translation":
+        "Текст и перевод",
+    "General":
+        "Общие",
+    "Done":
+        "Готово",
+    "Driver":
+        "Драйвер",
+    "Model":
+        "Модель",
+    "Network":
+        "Сеть",
+    "Auto (all drivers)":
+        "Авто (все драйверы)",
+    "No scanner found yet":
+        "Сканер пока не найден",
+    "Refresh":
+        "Обновить",
+    "Driver setup":
+        "Установка драйвера",
+    "Find on network":
+        "Найти в сети",
+    "Web panel":
+        "Веб-панель",
+    "Find your model’s driver":
+        "Найдите драйвер своей модели",
+    "No network reply yet":
+        "Пока нет ответа из сети",
+    "Everything here is found automatically. Change it only if the wrong scanner is chosen.":
+        "Здесь всё определяется автоматически. Меняйте только если выбран не тот сканер.",
+    "Save as":
+        "Сохранять как",
+    "one PDF with every page":
+        "один PDF со всеми страницами",
+    "one JPG image per page":
+        "одно изображение JPG на страницу",
+    "the PDF and the JPG images from one scan":
+        "PDF и изображения JPG из одного скана",
+    "Paper source":
+        "Источник бумаги",
+    "Auto · feeder if loaded, else flatbed":
+        "Авто · податчик, если в нём есть бумага, иначе стекло",
+    "Flatbed (glass)":
+        "Стекло (планшет)",
+    "Document feeder":
+        "Податчик документов",
+    "Document feeder · both sides":
+        "Податчик документов · двусторонний",
+    "Paper size":
+        "Размер бумаги",
+    "Resolution":
+        "Разрешение",
+    "150 dpi · fast, small file":
+        "150 dpi · быстро, маленький файл",
+    "300 dpi · recommended":
+        "300 dpi · рекомендуется",
+    "600 dpi · fine detail":
+        "600 dpi · мелкие детали",
+    "Colour":
+        "Цвет",
+    "Greyscale":
+        "Оттенки серого",
+    "Black and white":
+        "Чёрно-белый",
+    "Save to":
+        "Сохранять в",
+    "Browse…":
+        "Обзор…",
+    "Ask for a file name every time":
+        "Каждый раз спрашивать имя файла",
+    "Open the file after scanning":
+        "Открывать файл после сканирования",
+    "Auto source":
+        "Авто-источник",
+    "Flatbed":
+        "Стекло",
+    "Feeder":
+        "Податчик",
+    "Feeder · 2 sides":
+        "Податчик · 2 стороны",
+    "Make PDFs searchable with OCR (text recognition)":
+        "Делать PDF доступными для поиска с помощью OCR (распознавание текста)",
+    "OCR languages":
+        "Языки OCR",
+    "Auto · English + Greek + your system language":
+        "Авто · английский + греческий + язык системы",
+    "Choose languages":
+        "Выбрать языки",
+    "Languages download automatically the first time they are used.":
+        "Языки скачиваются автоматически при первом использовании.",
+    "Also save the text as a .txt file":
+        "Сохранять текст также в файл .txt",
+    "Translate automatically to":
+        "Автоматически переводить на",
+    "Off":
+        "Выкл.",
+    "Translation service":
+        "Сервис перевода",
+    "Google Translate (free)":
+        "Google Переводчик (бесплатно)",
+    "MyMemory (free)":
+        "MyMemory (бесплатно)",
+    "LibreTranslate (your server)":
+        "LibreTranslate (ваш сервер)",
+    "LibreTranslate server":
+        "Сервер LibreTranslate",
+    "API key (optional)":
+        "Ключ API (необязательно)",
+    "Free services need internet. Google falls back to MyMemory if it fails.":
+        "Бесплатным сервисам нужен интернет. Если Google не работает, используется MyMemory.",
+    "Theme":
+        "Тема",
+    "Auto · follow Windows / system":
+        "Авто · как в Windows / системе",
+    "Light":
+        "Светлая",
+    "Dark":
+        "Тёмная",
+    "Language":
+        "Язык",
+    "Auto · system language":
+        "Авто · язык системы",
+    "Updates":
+        "Обновления",
+    "Check for updates automatically":
+        "Автоматически проверять обновления",
+    "Check now":
+        "Проверить сейчас",
+    "Reset everything to Auto":
+        "Вернуть всё в Авто",
+    "All settings are back to Auto.":
+        "Все настройки возвращены в Авто.",
+    "Restart to change the language?":
+        "Перезапустить для смены языка?",
+    "The new language is used after a restart. Restart now?":
+        "Новый язык будет использоваться после перезапуска. Перезапустить сейчас?",
+    "Save scans to":
+        "Сохранять сканы в",
+    "Recognised text":
+        "Распознанный текст",
+    "Translation":
+        "Перевод",
+    "Translate":
+        "Перевести",
+    "From":
+        "С",
+    "To":
+        "На",
+    "Auto-detect":
+        "Автоопределение",
+    "Copy":
+        "Копировать",
+    "Save .txt":
+        "Сохранить .txt",
+    "Close":
+        "Закрыть",
+    "Copied.":
+        "Скопировано.",
+    "Detected language: {lang}":
+        "Определён язык: {lang}",
+    "Translating with {engine}…":
+        "Перевожу с помощью {engine}…",
+    "Translated with {engine}. Detected: {lang}.":
+        "Переведено с помощью {engine}. Определено: {lang}.",
+    "Translation failed. {error}":
+        "Перевод не удался. {error}",
+    "Saved {name}":
+        "Сохранено: {name}",
+    "No text yet. Turn on OCR in Settings › Text & translation, then scan again.":
+        "Текста пока нет. Включите OCR в Настройки › Текст и перевод и отсканируйте снова.",
+    "Text of {name}":
+        "Текст {name}",
+    "Looking for scanners ({drivers})…":
+        "Поиск сканеров ({drivers})…",
+    "Looking for scanners… {count} found so far.":
+        "Поиск сканеров… найдено: {count}.",
+    "Ready. Load the paper and click Scan.":
+        "Готов. Положите бумагу и нажмите «Сканировать».",
+    "Search stopped. Click Search again when you are ready.":
+        "Поиск остановлен. Нажмите «Искать снова», когда будете готовы.",
+    "No scanners found. Check the cable or Wi-Fi and the installed driver (Settings › Scanner › Driver setup).":
+        "Сканеры не найдены. Проверьте кабель или Wi-Fi и установленный драйвер (Настройки › Сканер › Установка драйвера).",
+    "The NAPS2 scanner engine was not found. Close and reopen the app to install it automatically.":
+        "Модуль сканирования NAPS2 не найден. Закройте и снова откройте приложение, чтобы установить его автоматически.",
+    "Scanning a quick low-resolution preview…":
+        "Сканирую быстрый предпросмотр в низком разрешении…",
+    "Check the page placement, then scan at your chosen resolution.":
+        "Проверьте положение страницы, затем сканируйте в выбранном разрешении.",
+    "Flatbed preview":
+        "Предпросмотр стекла",
+    "Back":
+        "Назад",
+    "Preview ready.":
+        "Предпросмотр готов.",
+    "No preview was produced. Check the flatbed and scanner connection.":
+        "Предпросмотр не получен. Проверьте стекло и подключение сканера.",
+    "Scanning from {where}… Keep the scanner on until the file is saved.":
+        "Сканирую с {where}… Не выключайте сканер, пока файл не сохранится.",
+    "the flatbed":
+        "стекла",
+    "the document feeder":
+        "податчика документов",
+    "the document feeder (both sides)":
+        "податчика документов (двусторонне)",
+    " Recognising text (OCR)…":
+        " Распознаю текст (OCR)…",
+    "Downloading OCR languages ({langs}). One time only…":
+        "Скачиваю языки OCR ({langs}). Только один раз…",
+    "OCR languages could not be installed ({langs}). Scanning without OCR.":
+        "Не удалось установить языки OCR ({langs}). Сканирую без OCR.",
+    "Scan cancelled.":
+        "Сканирование отменено.",
+    "The scanner is busy. Someone else may be using it. Wait a moment, then try again.":
+        "Сканер занят. Возможно, им пользуется кто-то другой. Подождите немного и повторите.",
+    "Windows could not reach the Canon scanner. Turn it on, make sure it is on the same Wi-Fi, and check it in Canon IJ Scan Utility, then retry.":
+        "Windows не удалось связаться со сканером Canon. Включите его, убедитесь, что он в той же Wi-Fi, проверьте его в Canon IJ Scan Utility и повторите.",
+    "Epson Scan 2 could not open the scanner. In Epson Scan 2 Utility, add or test its network address, then retry.":
+        "Epson Scan 2 не удалось открыть сканер. В Epson Scan 2 Utility добавьте или проверьте его сетевой адрес и повторите.",
+    "Scanner operation failed. {detail}":
+        "Операция сканера не удалась. {detail}",
+    "No pages were scanned. Check the paper and the scanner connection.":
+        "Страницы не отсканированы. Проверьте бумагу и подключение сканера.",
+    "Could not save the scan. {error}":
+        "Не удалось сохранить скан. {error}",
+    "The scan was kept as {path}":
+        "Скан сохранён как {path}",
+    "✓ Saved {files} in {folder}":
+        "✓ Сохранено {files} в {folder}",
+    "{count} JPG pages":
+        "Страниц JPG: {count}",
+    "text":
+        "текст",
+    "Translating the text to {lang}…":
+        "Перевожу текст на {lang}…",
+    "✓ Translation saved: {name}":
+        "✓ Перевод сохранён: {name}",
+    "Could not start NAPS2. {error}":
+        "Не удалось запустить NAPS2. {error}",
+    "Could not create {folder}. {error}\nChoose another folder in Settings › Scanning.":
+        "Не удалось создать {folder}. {error}\nВыберите другую папку в Настройки › Сканирование.",
+    "Save scan":
+        "Сохранить скан",
+    "Scan in progress":
+        "Идёт сканирование",
+    "A scan is running. Cancel it and close the app?":
+        "Идёт сканирование. Отменить его и закрыть приложение?",
+    "JPG export needs PyMuPDF. Close and reopen the app to install it.":
+        "Для экспорта в JPG нужен PyMuPDF. Закройте и снова откройте приложение, чтобы установить его.",
+    "Checking GitHub for a newer version…":
+        "Проверяю на GitHub наличие новой версии…",
+    "Could not check for updates. {error}":
+        "Не удалось проверить обновления. {error}",
+    "You have the latest version (v{version}).":
+        "У вас последняя версия (v{version}).",
+    "Update available":
+        "Доступно обновление",
+    "{app} {version} is available (you have v{current}).\n\nWhat's new:\n{notes}\n\nDownload and install it now?":
+        "Доступна {app} {version} (у вас v{current}).\n\nЧто нового:\n{notes}\n\nСкачать и установить сейчас?",
+    "No release notes.":
+        "Нет описания изменений.",
+    "Update {version} is waiting in Help.":
+        "Обновление {version} ждёт в Справке.",
+    "Finish the scan first, then install the update from Help.":
+        "Сначала завершите сканирование, затем установите обновление из Справки.",
+    "Downloading {version} from GitHub…":
+        "Скачиваю {version} с GitHub…",
+    "Update failed. {error}":
+        "Обновление не удалось. {error}",
+    "macOS is running the app from a temporary read-only copy. Drag What the Scan into Applications, open it from there, then update again.":
+        "macOS запускает приложение из временной копии только для чтения. Перетащите What the Scan в «Программы», откройте оттуда и обновите снова.",
+    "The app's folder can't be written to. Move the app to a folder you own (or Applications) and update again.":
+        "В папку приложения нельзя записывать. Переместите приложение в свою папку (или в «Программы») и обновите снова.",
+    "Update failed":
+        "Обновление не удалось",
+    "{error}\n\nOpen the release page to download it by hand?":
+        "{error}\n\nОткрыть страницу выпуска, чтобы скачать вручную?",
+    "Updated to {version}. Restarting…":
+        "Обновлено до {version}. Перезапуск…",
+    "Choose a model to find its driver.":
+        "Выберите модель, чтобы найти её драйвер.",
+    "Install driver":
+        "Установка драйвера",
+    "Download and install the official {label} now?\n\nWindows may ask for permission. Choose No to open the support page instead.":
+        "Скачать и установить официальный {label} сейчас?\n\nWindows может запросить разрешение. Выберите «Нет», чтобы открыть страницу поддержки.",
+    "Preparing the official {label} installer…":
+        "Подготовка официального установщика {label}…",
+    "{label} installed. Looking for scanners…":
+        "{label} установлен. Поиск сканеров…",
+    "Driver setup failed. {error}\nThe support page is opening so you can install it by hand.":
+        "Установка драйвера не удалась. {error}\nОткрывается страница поддержки, чтобы вы могли установить его вручную.",
+    "Searching the local network for scanners (Epson, Canon, HP, AirPrint)…":
+        "Поиск сканеров в локальной сети (Epson, Canon, HP, AirPrint)…",
+    "answered as a network (eSCL) scanner ✓":
+        "ответил как сетевой сканер (eSCL) ✓",
+    "This scanner has: {sources}":
+        "У этого сканера есть: {sources}",
+    "Network discovery failed. {error}":
+        "Поиск в сети не удался. {error}",
+    "Select your scanner's network address.":
+        "Выберите сетевой адрес своего сканера.",
+    "No scanner replied on this local network.":
+        "В этой локальной сети не ответил ни один сканер.",
+    "answered as a Canon scanner ✓":
+        "ответил как сканер Canon ✓",
+    "responds on the scanner port ✓":
+        "отвечает на порту сканера ✓",
+    "did not respond on the scanner port":
+        "не ответил на порту сканера",
+    "{brand} {ip} {state}. Scanning uses the driver chosen above.":
+        "{brand} {ip} {state}. Сканирование использует драйвер, выбранный выше.",
+}
+
+UI_JA = {
+    "{phone} (browser)": "{phone}（ブラウザー）",
+    "AirDrop":
+        "AirDrop",
+    "Send with AirDrop to an iPhone, iPad or Mac nearby":
+        "AirDrop で近くの iPhone、iPad、Mac に送信",
+    "AirDrop is open: choose the iPhone or Mac.":
+        "AirDrop を開きました。iPhone または Mac を選んでください。",
+    "AirDrop is not available on this Mac. Turn on Wi-Fi and Bluetooth.":
+        "この Mac では AirDrop を使用できません。Wi-Fi と Bluetooth をオンにしてください。",
+    "So that your phone can send to this computer, Windows Firewall must let it in.\n\nAllow it now? Windows asks for permission once (only phones on your own network, only the ports of {app}).":
+        "スマートフォンからこのコンピューターにファイルを送るには、Windows ファイアウォールで許可する必要があります。\n\n今すぐ許可しますか？ Windows が一度だけ許可を求めます（自分のネットワーク内のスマートフォンのみ、{app} のポートのみ）。",
+    "Waiting for Windows permission (firewall)…":
+        "Windows の許可を待っています（ファイアウォール）…",
+    "✓ Windows Firewall lets your phone in now.":
+        "✓ Windows ファイアウォールがスマートフォンの接続を許可しました。",
+    "Windows Firewall was not changed, so the phone may not be able to send to this computer.":
+        "Windows ファイアウォールは変更されていないため、スマートフォンからこのコンピューターに送信できない可能性があります。",
+    "LocalSend for the phone":
+        "スマートフォン用 LocalSend",
+    "Trying Epson's other download server…":
+        "Epson の別のダウンロードサーバーを試しています…",
+    "{name} answers on the network ({ip}), but its scanner driver is not installed.":
+        "{name} はネットワーク上で応答しています ({ip}) が、スキャナードライバーがインストールされていません。",
+    "Scanner driver missing":
+        "スキャナードライバーがありません",
+    "{name} was found on the network ({ip}), but its scanner driver is not installed, so the app cannot scan with it.\n\nInstall the official {label} now? It is downloaded and installed automatically (a few minutes; Windows may ask for permission).":
+        "{name} がネットワーク上で見つかりました ({ip}) が、スキャナードライバーがインストールされていないため、このアプリではスキャンできません。\n\n公式の {label} を今すぐインストールしますか？ 自動でダウンロードしてインストールします（数分。Windows が許可を求める場合があります）。",
+    "Phone":
+        "スマホ",
+    "Send to your phone or receive photos from it, on the same Wi-Fi (LocalSend app or QR code)":
+        "同じ Wi-Fi でスマートフォンに送信、またはスマートフォンから写真を受信（LocalSend アプリまたは QR コード）",
+    "Send scans to your phone and receive photos from it, on the same Wi-Fi.":
+        "同じ Wi-Fi で、スキャンをスマートフォンに送信し、スマートフォンから写真を受信します。",
+    "Receiving from the phone":
+        "スマートフォンからの受信",
+    "Keep receiving on while the app is open":
+        "アプリを開いている間は常に受信をオンにする",
+    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
+        "オフの場合、「スマホ」を押すたびに {minutes} 分間だけ受信が開きます。",
+    "Phone photos":
+        "スマートフォンの写真",
+    "Just save them in the scans folder":
+        "スキャンフォルダーにそのまま保存",
+    "Make a PDF, like a scan (OCR, Word)":
+        "スキャンと同じように PDF にする（OCR、Word）",
+    "Name on the phone":
+        "スマートフォンに表示される名前",
+    "How it works":
+        "使い方",
+    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. スマートフォンとコンピューターを同じ Wi-Fi に接続します。\n2. スマートフォンに無料の LocalSend アプリを入れるか、QR コードを読み取るだけです。\n3. 「プレビュー」の隣の「スマホ」を押し、スマートフォンを選んで「送信」。\n4. スマートフォンから送るには: LocalSend で「{name}」を選ぶか、QR コードのページを使います。",
+    "Get LocalSend":
+        "LocalSend を入手",
+    "Idle · making a PDF from phone photos":
+        "待機中 · スマートフォンの写真から PDF を作成中",
+    "✓ Made {file} from {count} phone photo(s)":
+        "✓ スマートフォンの写真 {count} 枚から {file} を作成しました",
+    "Windows may now ask whether {app} can use the network.\n\nTick “Private networks” and click Allow, so your phone can reach this computer.":
+        "{app} がネットワークを使用してよいか、Windows が確認する場合があります。\n\n「プライベート ネットワーク」にチェックを入れて「許可」をクリックすると、スマートフォンからこのコンピューターに接続できます。",
+    "The phone connection could not start. Another program may be using the network ports {ports}.":
+        "スマートフォンとの接続を開始できませんでした。別のプログラムがネットワークポート {ports} を使用している可能性があります。",
+    "Receiving is off. Press Phone to open it again.":
+        "受信はオフです。もう一度開くには「スマホ」を押してください。",
+    "Receiving is on: the phone can send files to “{name}”.":
+        "受信中: スマートフォンから「{name}」にファイルを送れます。",
+    "Receiving is on for {time}: the phone can send files to “{name}”.":
+        "残り {time} 受信中: スマートフォンから「{name}」にファイルを送れます。",
+    "… and {count} more":
+        "… ほか {count} 件",
+    "Files from a phone":
+        "スマートフォンからのファイル",
+    "“{sender}” wants to send {count} file(s):":
+        "「{sender}」が {count} 個のファイルを送ろうとしています:",
+    "They will be saved in {folder}.":
+        "{folder} に保存されます。",
+    "Accept":
+        "受け入れる",
+    "Decline":
+        "拒否",
+    "Receiving files from {sender}…":
+        "{sender} からファイルを受信中…",
+    "✓ Received {count} file(s) from {sender} in {folder}":
+        "✓ {sender} から {count} 個のファイルを {folder} に受信しました",
+    "The photos were saved as they are, because a scan is running.":
+        "スキャン中のため、写真はそのまま保存されました。",
+    "Making a PDF from {count} phone photo(s)…":
+        "スマートフォンの写真 {count} 枚から PDF を作成中…",
+    "This link has expired. Scan the QR code again.":
+        "このリンクは期限切れです。もう一度 QR コードを読み取ってください。",
+    "No scan yet. Scan something first, then reload this page.":
+        "まだスキャンがありません。先にスキャンしてから、このページを再読み込みしてください。",
+    "Waiting for the computer to accept…":
+        "コンピューターが受け入れるのを待っています…",
+    "The computer declined the files.":
+        "コンピューターがファイルを拒否しました。",
+    "The computer is receiving other files. Try again in a moment.":
+        "コンピューターは別のファイルを受信中です。少ししてからもう一度お試しください。",
+    "Sending failed. Check that the phone is on the same Wi-Fi and try again.":
+        "送信に失敗しました。スマートフォンが同じ Wi-Fi にあることを確認して、もう一度お試しください。",
+    "Sending {name}…":
+        "{name} を送信中…",
+    "✓ Sent! The files are on the computer.":
+        "✓ 送信しました！ ファイルはコンピューターにあります。",
+    "1 · Get the scan on this phone":
+        "1 · このスマートフォンにスキャンを取り込む",
+    "Reload":
+        "再読み込み",
+    "2 · Send photos or files to the computer":
+        "2 · 写真やファイルをコンピューターに送る",
+    "Take a photo or choose files":
+        "写真を撮る、またはファイルを選ぶ",
+    "Send to your phone":
+        "スマートフォンに送信",
+    "Phone and computer must be on the same Wi-Fi.":
+        "スマートフォンとコンピューターは同じ Wi-Fi に接続してください。",
+    "Choose other files…":
+        "ほかのファイルを選ぶ…",
+    "Phones with LocalSend":
+        "LocalSend のあるスマートフォン",
+    "Send":
+        "送信",
+    "No LocalSend? Scan this":
+        "LocalSend がない場合はこちらを読み取り",
+    "Point the phone camera at the code. A page opens where you can download the scan and send photos to this computer.":
+        "スマートフォンのカメラをコードに向けてください。スキャンのダウンロードや、このコンピューターへの写真送信ができるページが開きます。",
+    "QR code not available.":
+        "QR コードは利用できません。",
+    "To send: {names}  ({size})":
+        "送信するファイル: {names}  ({size})",
+    "Nothing to send yet. Scan first, or choose files.":
+        "まだ送るものがありません。先にスキャンするか、ファイルを選んでください。",
+    "Choose files for the phone":
+        "スマートフォンに送るファイルを選ぶ",
+    "Looking for phones… Open LocalSend on the phone.":
+        "スマートフォンを探しています… スマートフォンで LocalSend を開いてください。",
+    "No phone found.\n1. Is the phone on the same Wi-Fi?\n2. Open the LocalSend app on the phone (free, Play Store / App Store).\n3. Or simply scan the QR code on the right.":
+        "スマートフォンが見つかりません。\n1. スマートフォンは同じ Wi-Fi に接続していますか？\n2. スマートフォンで LocalSend アプリを開いてください（無料、Play ストア / App Store）。\n3. または右側の QR コードを読み取るだけでも OK です。",
+    "Waiting for {phone} to accept… Tap Accept on the phone.":
+        "{phone} が受け入れるのを待っています… スマートフォンで「受け入れる」をタップしてください。",
+    "Sending to {phone}… {value}%":
+        "{phone} に送信中… {value}%",
+    "{phone} declined the files.":
+        "{phone} がファイルを拒否しました。",
+    "{phone} is busy with another transfer. Try again in a moment.":
+        "{phone} は別の転送中です。少ししてからもう一度お試しください。",
+    "{phone} asks for a PIN. Turn off the PIN in LocalSend settings on the phone.":
+        "{phone} が PIN を求めています。スマートフォンの LocalSend 設定で PIN をオフにしてください。",
+    "Could not reach {phone}. Is LocalSend open and on the same Wi-Fi?":
+        "{phone} に接続できません。LocalSend が開いていて、同じ Wi-Fi にありますか？",
+    "Sending cancelled.":
+        "送信をキャンセルしました。",
+    "✓ Sent {count} file(s) to {phone}.":
+        "✓ {phone} に {count} 個のファイルを送信しました。",
+    "Sending failed. {error}":
+        "送信に失敗しました。{error}",
+    "Also save an editable document (text from OCR)":
+        "編集可能な文書も保存する（OCR のテキスト）",
+    "Document":
+        "文書",
+    "Word (.docx) · Microsoft Word":
+        "Word (.docx) · Microsoft Word",
+    "OpenDocument (.odt) · LibreOffice on Mac / Linux":
+        "OpenDocument (.odt) · Mac / Linux の LibreOffice",
+    "Word export needs python-docx. Close and reopen the app to install it.":
+        "Word への書き出しには python-docx が必要です。アプリを閉じて開き直すとインストールされます。",
+    "What to save, the paper and where the files go.":
+        "保存する内容、用紙、ファイルの保存先。",
+    "Recognise text in your scans and translate it.":
+        "スキャンの文字を認識して翻訳します。",
+    "Language, appearance and updates.":
+        "言語、外観、アップデート。",
+    "Output":
+        "出力",
+    "Paper":
+        "用紙",
+    "Saving":
+        "保存",
+    "Text recognition (OCR)":
+        "文字認識 (OCR)",
+    "Appearance":
+        "外観",
+    "Reset":
+        "リセット",
+    "Settings":
+        "設定",
+    "Help":
+        "ヘルプ",
+    "Ready":
+        "準備完了",
+    "Idle":
+        "待機中",
+    "Scan":
+        "スキャン",
+    "Preview":
+        "プレビュー",
+    "Text":
+        "テキスト",
+    "Open last":
+        "最後のファイル",
+    "Open folder":
+        "フォルダーを開く",
+    "Cancel":
+        "キャンセル",
+    "Stop search":
+        "検索を停止",
+    "Search again":
+        "再検索",
+    "Change…":
+        "変更…",
+    "Starting…":
+        "起動中…",
+    "Looking for scanners…":
+        "スキャナーを検索中…",
+    "Checking every driver at the same time.":
+        "すべてのドライバーを同時に確認しています。",
+    "Connected to {name}":
+        "{name} に接続しました",
+    "via {driver}":
+        "{driver} 経由",
+    "{brand} at {ip}":
+        "{brand} ({ip})",
+    "{count} more in Settings":
+        "ほか {count} 台は設定で",
+    "No scanner connected":
+        "スキャナーが接続されていません",
+    "Turn the scanner on, check the USB cable or Wi-Fi, then click Search again.":
+        "スキャナーの電源を入れ、USB ケーブルまたは Wi-Fi を確認してから「再検索」をクリックしてください。",
+    "saves to {folder}":
+        "{folder} に保存",
+    "asks for a file name":
+        "ファイル名を確認",
+    "OCR":
+        "OCR",
+    "OCR off":
+        "OCR オフ",
+    "translate → {lang}":
+        "翻訳 → {lang}",
+    "Scan and save in the format chosen in Settings (Ctrl+S)":
+        "設定で選んだ形式でスキャンして保存 (Ctrl+S)",
+    "Quick low-resolution look at the flatbed (Ctrl+P)":
+        "原稿台を低解像度ですばやく確認 (Ctrl+P)",
+    "Recognised text and translation of the last scan (Ctrl+T)":
+        "最後のスキャンの認識テキストと翻訳 (Ctrl+T)",
+    "Open the last scanned file":
+        "最後にスキャンしたファイルを開く",
+    "Open the folder with your scans":
+        "スキャンの保存フォルダーを開く",
+    "Stop the scan or search (Esc)":
+        "スキャンまたは検索を停止 (Esc)",
+    "Look for scanners again (F5)":
+        "スキャナーを再検索 (F5)",
+    "Choose another scanner or change scan settings":
+        "別のスキャナーを選ぶ、またはスキャン設定を変更",
+    "Scanner, scanning, text and appearance settings (Ctrl+,)":
+        "スキャナー、スキャン、テキスト、外観の設定 (Ctrl+,)",
+    "Quick guide":
+        "クイックガイド",
+    "Check for updates…":
+        "アップデートを確認…",
+    "Project page on GitHub":
+        "GitHub のプロジェクトページ",
+    "About {app}":
+        "{app} について",
+    "Update to {version}…":
+        "{version} にアップデート…",
+    "In use · scanning on this PC":
+        "使用中 · この PC でスキャン中",
+    "In use by {who}":
+        "使用中: {who}",
+    "{user} on {host}":
+        "{host} の {user}",
+    "Started at {time}. Wait until the light turns green.":
+        "{time} に開始。ランプが緑になるまでお待ちください。",
+    "In use · scanner is busy":
+        "使用中 · スキャナーが動作中",
+    "The scanner reports that it is scanning right now.":
+        "スキャナーは現在スキャン中です。",
+    "Idle · searching…":
+        "待機中 · 検索中…",
+    "Idle · no scanner":
+        "待機中 · スキャナーなし",
+    "No scanner is connected yet.":
+        "まだスキャナーが接続されていません。",
+    "Idle · scanner on standby":
+        "待機中 · スキャナーはスタンバイ",
+    "The scanner reports that it is stopped or offline.":
+        "スキャナーは停止中またはオフラインです。",
+    "The scanner is free. You can scan.":
+        "スキャナーは空いています。スキャンできます。",
+    "Idle · installing OCR…":
+        "待機中 · OCR をインストール中…",
+    "The scanner is free now. You can scan.":
+        "スキャナーが空きました。スキャンできます。",
+    "Scanner in use":
+        "スキャナー使用中",
+    "The scanner is in use right now.\n\n{text}.\n{tip}\n\nPlease wait until the light at the top turns green, then try again.\nThis app will beep when the scanner is free.":
+        "スキャナーは現在使用中です。\n\n{text}。\n{tip}\n\n上部のランプが緑になるまで待ってから、もう一度お試しください。\nスキャナーが空くとアプリが音でお知らせします。",
+    "Scanner in use: {text}. Wait for the green light.":
+        "スキャナー使用中: {text}。緑のランプをお待ちください。",
+    "Scanner":
+        "スキャナー",
+    "Scanning":
+        "スキャン",
+    "Text & translation":
+        "テキストと翻訳",
+    "General":
+        "一般",
+    "Done":
+        "完了",
+    "Driver":
+        "ドライバー",
+    "Model":
+        "モデル",
+    "Network":
+        "ネットワーク",
+    "Auto (all drivers)":
+        "自動（すべてのドライバー）",
+    "No scanner found yet":
+        "まだスキャナーが見つかりません",
+    "Refresh":
+        "更新",
+    "Driver setup":
+        "ドライバーのセットアップ",
+    "Find on network":
+        "ネットワークで検索",
+    "Web panel":
+        "Web パネル",
+    "Find your model’s driver":
+        "お使いのモデルのドライバーを探す",
+    "No network reply yet":
+        "まだネットワークから応答がありません",
+    "Everything here is found automatically. Change it only if the wrong scanner is chosen.":
+        "ここはすべて自動で検出されます。間違ったスキャナーが選ばれた場合のみ変更してください。",
+    "Save as":
+        "保存形式",
+    "one PDF with every page":
+        "全ページを 1 つの PDF に",
+    "one JPG image per page":
+        "1 ページごとに 1 枚の JPG 画像",
+    "the PDF and the JPG images from one scan":
+        "1 回のスキャンから PDF と JPG 画像の両方",
+    "Paper source":
+        "給紙方法",
+    "Auto · feeder if loaded, else flatbed":
+        "自動 · 用紙があれば ADF、なければ原稿台",
+    "Flatbed (glass)":
+        "原稿台（フラットベッド）",
+    "Document feeder":
+        "ADF（自動原稿送り装置）",
+    "Document feeder · both sides":
+        "ADF · 両面",
+    "Paper size":
+        "用紙サイズ",
+    "Resolution":
+        "解像度",
+    "150 dpi · fast, small file":
+        "150 dpi · 高速、小さいファイル",
+    "300 dpi · recommended":
+        "300 dpi · 推奨",
+    "600 dpi · fine detail":
+        "600 dpi · 高精細",
+    "Colour":
+        "カラー",
+    "Greyscale":
+        "グレースケール",
+    "Black and white":
+        "白黒",
+    "Save to":
+        "保存先",
+    "Browse…":
+        "参照…",
+    "Ask for a file name every time":
+        "毎回ファイル名を確認する",
+    "Open the file after scanning":
+        "スキャン後にファイルを開く",
+    "Auto source":
+        "自動給紙",
+    "Flatbed":
+        "原稿台",
+    "Feeder":
+        "ADF",
+    "Feeder · 2 sides":
+        "ADF · 両面",
+    "Make PDFs searchable with OCR (text recognition)":
+        "OCR（文字認識）で PDF を検索可能にする",
+    "OCR languages":
+        "OCR の言語",
+    "Auto · English + Greek + your system language":
+        "自動 · 英語 + ギリシャ語 + システムの言語",
+    "Choose languages":
+        "言語を選ぶ",
+    "Languages download automatically the first time they are used.":
+        "言語は初めて使うときに自動でダウンロードされます。",
+    "Also save the text as a .txt file":
+        "テキストを .txt ファイルとしても保存する",
+    "Translate automatically to":
+        "自動で翻訳する言語",
+    "Off":
+        "オフ",
+    "Translation service":
+        "翻訳サービス",
+    "Google Translate (free)":
+        "Google 翻訳（無料）",
+    "MyMemory (free)":
+        "MyMemory（無料）",
+    "LibreTranslate (your server)":
+        "LibreTranslate（自分のサーバー）",
+    "LibreTranslate server":
+        "LibreTranslate サーバー",
+    "API key (optional)":
+        "API キー（任意）",
+    "Free services need internet. Google falls back to MyMemory if it fails.":
+        "無料サービスにはインターネットが必要です。Google が失敗した場合は MyMemory を使います。",
+    "Theme":
+        "テーマ",
+    "Auto · follow Windows / system":
+        "自動 · Windows / システムに合わせる",
+    "Light":
+        "ライト",
+    "Dark":
+        "ダーク",
+    "Language":
+        "言語",
+    "Auto · system language":
+        "自動 · システムの言語",
+    "Updates":
+        "アップデート",
+    "Check for updates automatically":
+        "アップデートを自動で確認する",
+    "Check now":
+        "今すぐ確認",
+    "Reset everything to Auto":
+        "すべて自動に戻す",
+    "All settings are back to Auto.":
+        "すべての設定を自動に戻しました。",
+    "Restart to change the language?":
+        "言語を変更するために再起動しますか？",
+    "The new language is used after a restart. Restart now?":
+        "新しい言語は再起動後に使われます。今すぐ再起動しますか？",
+    "Save scans to":
+        "スキャンの保存先",
+    "Recognised text":
+        "認識されたテキスト",
+    "Translation":
+        "翻訳",
+    "Translate":
+        "翻訳する",
+    "From":
+        "翻訳元",
+    "To":
+        "翻訳先",
+    "Auto-detect":
+        "自動検出",
+    "Copy":
+        "コピー",
+    "Save .txt":
+        ".txt を保存",
+    "Close":
+        "閉じる",
+    "Copied.":
+        "コピーしました。",
+    "Detected language: {lang}":
+        "検出された言語: {lang}",
+    "Translating with {engine}…":
+        "{engine} で翻訳中…",
+    "Translated with {engine}. Detected: {lang}.":
+        "{engine} で翻訳しました。検出: {lang}。",
+    "Translation failed. {error}":
+        "翻訳に失敗しました。{error}",
+    "Saved {name}":
+        "{name} を保存しました",
+    "No text yet. Turn on OCR in Settings › Text & translation, then scan again.":
+        "まだテキストがありません。設定 › テキストと翻訳 で OCR をオンにして、もう一度スキャンしてください。",
+    "Text of {name}":
+        "{name} のテキスト",
+    "Looking for scanners ({drivers})…":
+        "スキャナーを検索中 ({drivers})…",
+    "Looking for scanners… {count} found so far.":
+        "スキャナーを検索中… これまでに {count} 台見つかりました。",
+    "Ready. Load the paper and click Scan.":
+        "準備完了。用紙をセットして「スキャン」をクリックしてください。",
+    "Search stopped. Click Search again when you are ready.":
+        "検索を停止しました。準備ができたら「再検索」をクリックしてください。",
+    "No scanners found. Check the cable or Wi-Fi and the installed driver (Settings › Scanner › Driver setup).":
+        "スキャナーが見つかりません。ケーブルまたは Wi-Fi と、インストール済みのドライバーを確認してください（設定 › スキャナー › ドライバーのセットアップ）。",
+    "The NAPS2 scanner engine was not found. Close and reopen the app to install it automatically.":
+        "スキャンエンジン NAPS2 が見つかりません。アプリを閉じて開き直すと自動でインストールされます。",
+    "Scanning a quick low-resolution preview…":
+        "低解像度のクイックプレビューをスキャン中…",
+    "Check the page placement, then scan at your chosen resolution.":
+        "ページの位置を確認してから、選んだ解像度でスキャンしてください。",
+    "Flatbed preview":
+        "原稿台のプレビュー",
+    "Back":
+        "戻る",
+    "Preview ready.":
+        "プレビューの準備ができました。",
+    "No preview was produced. Check the flatbed and scanner connection.":
+        "プレビューを作成できませんでした。原稿台とスキャナーの接続を確認してください。",
+    "Scanning from {where}… Keep the scanner on until the file is saved.":
+        "{where}からスキャン中… ファイルが保存されるまでスキャナーの電源を切らないでください。",
+    "the flatbed":
+        "原稿台",
+    "the document feeder":
+        "ADF",
+    "the document feeder (both sides)":
+        "ADF（両面）",
+    " Recognising text (OCR)…":
+        " 文字を認識中 (OCR)…",
+    "Downloading OCR languages ({langs}). One time only…":
+        "OCR の言語をダウンロード中 ({langs})。初回のみ…",
+    "OCR languages could not be installed ({langs}). Scanning without OCR.":
+        "OCR の言語をインストールできませんでした ({langs})。OCR なしでスキャンします。",
+    "Scan cancelled.":
+        "スキャンをキャンセルしました。",
+    "The scanner is busy. Someone else may be using it. Wait a moment, then try again.":
+        "スキャナーは使用中です。ほかの人が使っている可能性があります。少し待ってから、もう一度お試しください。",
+    "Windows could not reach the Canon scanner. Turn it on, make sure it is on the same Wi-Fi, and check it in Canon IJ Scan Utility, then retry.":
+        "Windows が Canon スキャナーに接続できませんでした。電源を入れ、同じ Wi-Fi にあることを確認し、Canon IJ Scan Utility で確認してから再試行してください。",
+    "Epson Scan 2 could not open the scanner. In Epson Scan 2 Utility, add or test its network address, then retry.":
+        "Epson Scan 2 がスキャナーを開けませんでした。Epson Scan 2 Utility でネットワークアドレスを追加またはテストしてから再試行してください。",
+    "Scanner operation failed. {detail}":
+        "スキャナーの操作に失敗しました。{detail}",
+    "No pages were scanned. Check the paper and the scanner connection.":
+        "ページがスキャンされませんでした。用紙とスキャナーの接続を確認してください。",
+    "Could not save the scan. {error}":
+        "スキャンを保存できませんでした。{error}",
+    "The scan was kept as {path}":
+        "スキャンは {path} として保存されました",
+    "✓ Saved {files} in {folder}":
+        "✓ {files} を {folder} に保存しました",
+    "{count} JPG pages":
+        "JPG {count} ページ",
+    "text":
+        "テキスト",
+    "Translating the text to {lang}…":
+        "テキストを{lang}に翻訳中…",
+    "✓ Translation saved: {name}":
+        "✓ 翻訳を保存しました: {name}",
+    "Could not start NAPS2. {error}":
+        "NAPS2 を起動できませんでした。{error}",
+    "Could not create {folder}. {error}\nChoose another folder in Settings › Scanning.":
+        "{folder} を作成できませんでした。{error}\n設定 › スキャン で別のフォルダーを選んでください。",
+    "Save scan":
+        "スキャンを保存",
+    "Scan in progress":
+        "スキャン中",
+    "A scan is running. Cancel it and close the app?":
+        "スキャン中です。キャンセルしてアプリを閉じますか？",
+    "JPG export needs PyMuPDF. Close and reopen the app to install it.":
+        "JPG への書き出しには PyMuPDF が必要です。アプリを閉じて開き直すとインストールされます。",
+    "Checking GitHub for a newer version…":
+        "GitHub で新しいバージョンを確認中…",
+    "Could not check for updates. {error}":
+        "アップデートを確認できませんでした。{error}",
+    "You have the latest version (v{version}).":
+        "最新バージョンです (v{version})。",
+    "Update available":
+        "アップデートがあります",
+    "{app} {version} is available (you have v{current}).\n\nWhat's new:\n{notes}\n\nDownload and install it now?":
+        "{app} {version} が利用できます（現在は v{current}）。\n\n新機能:\n{notes}\n\n今すぐダウンロードしてインストールしますか？",
+    "No release notes.":
+        "リリースノートはありません。",
+    "Update {version} is waiting in Help.":
+        "アップデート {version} がヘルプで待っています。",
+    "Finish the scan first, then install the update from Help.":
+        "先にスキャンを終えてから、ヘルプからアップデートをインストールしてください。",
+    "Downloading {version} from GitHub…":
+        "GitHub から {version} をダウンロード中…",
+    "Update failed. {error}":
+        "アップデートに失敗しました。{error}",
+    "macOS is running the app from a temporary read-only copy. Drag What the Scan into Applications, open it from there, then update again.":
+        "macOS が一時的な読み取り専用のコピーからアプリを実行しています。What the Scan を「アプリケーション」にドラッグし、そこから開いてもう一度アップデートしてください。",
+    "The app's folder can't be written to. Move the app to a folder you own (or Applications) and update again.":
+        "アプリのフォルダーに書き込めません。アプリを自分のフォルダー（または「アプリケーション」）に移動して、もう一度アップデートしてください。",
+    "Update failed":
+        "アップデートに失敗しました",
+    "{error}\n\nOpen the release page to download it by hand?":
+        "{error}\n\nリリースページを開いて手動でダウンロードしますか？",
+    "Updated to {version}. Restarting…":
+        "{version} にアップデートしました。再起動中…",
+    "Choose a model to find its driver.":
+        "ドライバーを探すモデルを選んでください。",
+    "Install driver":
+        "ドライバーのインストール",
+    "Download and install the official {label} now?\n\nWindows may ask for permission. Choose No to open the support page instead.":
+        "公式の {label} を今すぐダウンロードしてインストールしますか？\n\nWindows が許可を求める場合があります。代わりにサポートページを開くには「いいえ」を選んでください。",
+    "Preparing the official {label} installer…":
+        "公式の {label} インストーラーを準備中…",
+    "{label} installed. Looking for scanners…":
+        "{label} をインストールしました。スキャナーを検索中…",
+    "Driver setup failed. {error}\nThe support page is opening so you can install it by hand.":
+        "ドライバーのセットアップに失敗しました。{error}\n手動でインストールできるようにサポートページを開きます。",
+    "Searching the local network for scanners (Epson, Canon, HP, AirPrint)…":
+        "ローカルネットワークでスキャナーを検索中（Epson、Canon、HP、AirPrint）…",
+    "answered as a network (eSCL) scanner ✓":
+        "ネットワークスキャナー (eSCL) として応答しました ✓",
+    "This scanner has: {sources}":
+        "このスキャナーの給紙: {sources}",
+    "Network discovery failed. {error}":
+        "ネットワーク検索に失敗しました。{error}",
+    "Select your scanner's network address.":
+        "スキャナーのネットワークアドレスを選んでください。",
+    "No scanner replied on this local network.":
+        "このローカルネットワークで応答したスキャナーはありません。",
+    "answered as a Canon scanner ✓":
+        "Canon スキャナーとして応答しました ✓",
+    "responds on the scanner port ✓":
+        "スキャナーのポートで応答しています ✓",
+    "did not respond on the scanner port":
+        "スキャナーのポートで応答しませんでした",
+    "{brand} {ip} {state}. Scanning uses the driver chosen above.":
+        "{brand} {ip} {state}。スキャンには上で選んだドライバーを使います。",
+}
+
+UI_ZH = {
+    "{phone} (browser)": "{phone}（浏览器）",
+    "AirDrop":
+        "隔空投送",
+    "Send with AirDrop to an iPhone, iPad or Mac nearby":
+        "通过隔空投送发送到附近的 iPhone、iPad 或 Mac",
+    "AirDrop is open: choose the iPhone or Mac.":
+        "隔空投送已打开：请选择 iPhone 或 Mac。",
+    "AirDrop is not available on this Mac. Turn on Wi-Fi and Bluetooth.":
+        "此 Mac 无法使用隔空投送。请打开 Wi-Fi 和蓝牙。",
+    "So that your phone can send to this computer, Windows Firewall must let it in.\n\nAllow it now? Windows asks for permission once (only phones on your own network, only the ports of {app}).":
+        "要让手机能向这台电脑发送文件，需要 Windows 防火墙允许。\n\n现在允许吗？Windows 只会请求一次权限（仅限你自己网络中的手机，仅限 {app} 的端口）。",
+    "Waiting for Windows permission (firewall)…":
+        "正在等待 Windows 授权（防火墙）…",
+    "✓ Windows Firewall lets your phone in now.":
+        "✓ Windows 防火墙现在允许你的手机连接。",
+    "Windows Firewall was not changed, so the phone may not be able to send to this computer.":
+        "Windows 防火墙未更改，手机可能无法向这台电脑发送文件。",
+    "LocalSend for the phone":
+        "手机版 LocalSend",
+    "Trying Epson's other download server…":
+        "正在尝试 Epson 的另一个下载服务器…",
+    "{name} answers on the network ({ip}), but its scanner driver is not installed.":
+        "{name} 在网络上有响应（{ip}），但未安装其扫描仪驱动。",
+    "Scanner driver missing":
+        "缺少扫描仪驱动",
+    "{name} was found on the network ({ip}), but its scanner driver is not installed, so the app cannot scan with it.\n\nInstall the official {label} now? It is downloaded and installed automatically (a few minutes; Windows may ask for permission).":
+        "在网络上找到了 {name}（{ip}），但未安装其扫描仪驱动，因此本应用无法用它扫描。\n\n现在安装官方 {label} 吗？将自动下载并安装（几分钟；Windows 可能会请求权限）。",
+    "Phone":
+        "手机",
+    "Send to your phone or receive photos from it, on the same Wi-Fi (LocalSend app or QR code)":
+        "在同一 Wi-Fi 下发送到手机或从手机接收照片（LocalSend 应用或二维码）",
+    "Send scans to your phone and receive photos from it, on the same Wi-Fi.":
+        "在同一 Wi-Fi 下把扫描件发送到手机，并从手机接收照片。",
+    "Receiving from the phone":
+        "从手机接收",
+    "Keep receiving on while the app is open":
+        "应用打开期间始终开启接收",
+    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
+        "关闭时，每次按“手机”都会开启接收 {minutes} 分钟。",
+    "Phone photos":
+        "手机照片",
+    "Just save them in the scans folder":
+        "仅保存到扫描文件夹",
+    "Make a PDF, like a scan (OCR, Word)":
+        "像扫描一样生成 PDF（OCR、Word）",
+    "Name on the phone":
+        "手机上显示的名称",
+    "How it works":
+        "使用方法",
+    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. 手机和电脑连接同一 Wi-Fi。\n2. 在手机上安装免费的 LocalSend 应用，或直接扫描二维码。\n3. 按“预览”旁边的“手机”，选择手机后点“发送”。\n4. 从手机发送：在 LocalSend 中选择“{name}”，或使用二维码页面。",
+    "Get LocalSend":
+        "获取 LocalSend",
+    "Idle · making a PDF from phone photos":
+        "空闲 · 正在用手机照片生成 PDF",
+    "✓ Made {file} from {count} phone photo(s)":
+        "✓ 已用 {count} 张手机照片生成 {file}",
+    "Windows may now ask whether {app} can use the network.\n\nTick “Private networks” and click Allow, so your phone can reach this computer.":
+        "Windows 现在可能会询问 {app} 是否可以使用网络。\n\n勾选“专用网络”并点击“允许”，手机才能连接到这台电脑。",
+    "The phone connection could not start. Another program may be using the network ports {ports}.":
+        "无法启动手机连接。可能有其他程序正在使用网络端口 {ports}。",
+    "Receiving is off. Press Phone to open it again.":
+        "接收已关闭。按“手机”可重新开启。",
+    "Receiving is on: the phone can send files to “{name}”.":
+        "接收已开启：手机可以向“{name}”发送文件。",
+    "Receiving is on for {time}: the phone can send files to “{name}”.":
+        "接收开启中，剩余 {time}：手机可以向“{name}”发送文件。",
+    "… and {count} more":
+        "… 另外 {count} 个",
+    "Files from a phone":
+        "来自手机的文件",
+    "“{sender}” wants to send {count} file(s):":
+        "“{sender}”想发送 {count} 个文件：",
+    "They will be saved in {folder}.":
+        "文件将保存到 {folder}。",
+    "Accept":
+        "接受",
+    "Decline":
+        "拒绝",
+    "Receiving files from {sender}…":
+        "正在接收来自 {sender} 的文件…",
+    "✓ Received {count} file(s) from {sender} in {folder}":
+        "✓ 已从 {sender} 接收 {count} 个文件到 {folder}",
+    "The photos were saved as they are, because a scan is running.":
+        "由于正在扫描，照片已按原样保存。",
+    "Making a PDF from {count} phone photo(s)…":
+        "正在用 {count} 张手机照片生成 PDF…",
+    "This link has expired. Scan the QR code again.":
+        "此链接已过期。请重新扫描二维码。",
+    "No scan yet. Scan something first, then reload this page.":
+        "还没有扫描件。请先扫描，然后刷新此页面。",
+    "Waiting for the computer to accept…":
+        "正在等待电脑接受…",
+    "The computer declined the files.":
+        "电脑拒绝了这些文件。",
+    "The computer is receiving other files. Try again in a moment.":
+        "电脑正在接收其他文件。请稍后再试。",
+    "Sending failed. Check that the phone is on the same Wi-Fi and try again.":
+        "发送失败。请确认手机连接的是同一 Wi-Fi，然后重试。",
+    "Sending {name}…":
+        "正在发送 {name}…",
+    "✓ Sent! The files are on the computer.":
+        "✓ 已发送！文件已在电脑上。",
+    "1 · Get the scan on this phone":
+        "1 · 在这部手机上获取扫描件",
+    "Reload":
+        "刷新",
+    "2 · Send photos or files to the computer":
+        "2 · 向电脑发送照片或文件",
+    "Take a photo or choose files":
+        "拍照或选择文件",
+    "Send to your phone":
+        "发送到手机",
+    "Phone and computer must be on the same Wi-Fi.":
+        "手机和电脑必须连接同一 Wi-Fi。",
+    "Choose other files…":
+        "选择其他文件…",
+    "Phones with LocalSend":
+        "装有 LocalSend 的手机",
+    "Send":
+        "发送",
+    "No LocalSend? Scan this":
+        "没有 LocalSend？扫描这里",
+    "Point the phone camera at the code. A page opens where you can download the scan and send photos to this computer.":
+        "将手机摄像头对准二维码，会打开一个页面，可以下载扫描件并向这台电脑发送照片。",
+    "QR code not available.":
+        "二维码不可用。",
+    "To send: {names}  ({size})":
+        "待发送：{names}  （{size}）",
+    "Nothing to send yet. Scan first, or choose files.":
+        "暂无可发送内容。请先扫描或选择文件。",
+    "Choose files for the phone":
+        "选择要发送到手机的文件",
+    "Looking for phones… Open LocalSend on the phone.":
+        "正在查找手机… 请在手机上打开 LocalSend。",
+    "No phone found.\n1. Is the phone on the same Wi-Fi?\n2. Open the LocalSend app on the phone (free, Play Store / App Store).\n3. Or simply scan the QR code on the right.":
+        "未找到手机。\n1. 手机是否连接同一 Wi-Fi？\n2. 在手机上打开 LocalSend 应用（免费，Play 商店 / App Store）。\n3. 或者直接扫描右侧的二维码。",
+    "Waiting for {phone} to accept… Tap Accept on the phone.":
+        "正在等待 {phone} 接受… 请在手机上点“接受”。",
+    "Sending to {phone}… {value}%":
+        "正在发送到 {phone}… {value}%",
+    "{phone} declined the files.":
+        "{phone} 拒绝了这些文件。",
+    "{phone} is busy with another transfer. Try again in a moment.":
+        "{phone} 正在进行其他传输。请稍后再试。",
+    "{phone} asks for a PIN. Turn off the PIN in LocalSend settings on the phone.":
+        "{phone} 要求输入 PIN。请在手机的 LocalSend 设置中关闭 PIN。",
+    "Could not reach {phone}. Is LocalSend open and on the same Wi-Fi?":
+        "无法连接 {phone}。LocalSend 是否已打开并连接同一 Wi-Fi？",
+    "Sending cancelled.":
+        "已取消发送。",
+    "✓ Sent {count} file(s) to {phone}.":
+        "✓ 已向 {phone} 发送 {count} 个文件。",
+    "Sending failed. {error}":
+        "发送失败。{error}",
+    "Also save an editable document (text from OCR)":
+        "同时保存可编辑文档（来自 OCR 的文字）",
+    "Document":
+        "文档",
+    "Word (.docx) · Microsoft Word":
+        "Word (.docx) · Microsoft Word",
+    "OpenDocument (.odt) · LibreOffice on Mac / Linux":
+        "OpenDocument (.odt) · Mac / Linux 上的 LibreOffice",
+    "Word export needs python-docx. Close and reopen the app to install it.":
+        "导出 Word 需要 python-docx。关闭并重新打开应用即可自动安装。",
+    "What to save, the paper and where the files go.":
+        "保存什么、纸张以及文件保存位置。",
+    "Recognise text in your scans and translate it.":
+        "识别扫描件中的文字并翻译。",
+    "Language, appearance and updates.":
+        "语言、外观和更新。",
+    "Output":
+        "输出",
+    "Paper":
+        "纸张",
+    "Saving":
+        "保存",
+    "Text recognition (OCR)":
+        "文字识别 (OCR)",
+    "Appearance":
+        "外观",
+    "Reset":
+        "重置",
+    "Settings":
+        "设置",
+    "Help":
+        "帮助",
+    "Ready":
+        "就绪",
+    "Idle":
+        "空闲",
+    "Scan":
+        "扫描",
+    "Preview":
+        "预览",
+    "Text":
+        "文字",
+    "Open last":
+        "打开最近",
+    "Open folder":
+        "打开文件夹",
+    "Cancel":
+        "取消",
+    "Stop search":
+        "停止搜索",
+    "Search again":
+        "重新搜索",
+    "Change…":
+        "更改…",
+    "Starting…":
+        "正在启动…",
+    "Looking for scanners…":
+        "正在查找扫描仪…",
+    "Checking every driver at the same time.":
+        "正在同时检查所有驱动。",
+    "Connected to {name}":
+        "已连接到 {name}",
+    "via {driver}":
+        "通过 {driver}",
+    "{brand} at {ip}":
+        "{brand}，地址 {ip}",
+    "{count} more in Settings":
+        "设置中还有 {count} 台",
+    "No scanner connected":
+        "未连接扫描仪",
+    "Turn the scanner on, check the USB cable or Wi-Fi, then click Search again.":
+        "请打开扫描仪，检查 USB 线或 Wi-Fi，然后点击“重新搜索”。",
+    "saves to {folder}":
+        "保存到 {folder}",
+    "asks for a file name":
+        "询问文件名",
+    "OCR":
+        "OCR",
+    "OCR off":
+        "OCR 关闭",
+    "translate → {lang}":
+        "翻译 → {lang}",
+    "Scan and save in the format chosen in Settings (Ctrl+S)":
+        "扫描并按“设置”中选择的格式保存 (Ctrl+S)",
+    "Quick low-resolution look at the flatbed (Ctrl+P)":
+        "以低分辨率快速预览扫描平板 (Ctrl+P)",
+    "Recognised text and translation of the last scan (Ctrl+T)":
+        "最近一次扫描的识别文字和翻译 (Ctrl+T)",
+    "Open the last scanned file":
+        "打开最近扫描的文件",
+    "Open the folder with your scans":
+        "打开扫描件所在文件夹",
+    "Stop the scan or search (Esc)":
+        "停止扫描或搜索 (Esc)",
+    "Look for scanners again (F5)":
+        "重新查找扫描仪 (F5)",
+    "Choose another scanner or change scan settings":
+        "选择其他扫描仪或更改扫描设置",
+    "Scanner, scanning, text and appearance settings (Ctrl+,)":
+        "扫描仪、扫描、文字和外观设置 (Ctrl+,)",
+    "Quick guide":
+        "快速指南",
+    "Check for updates…":
+        "检查更新…",
+    "Project page on GitHub":
+        "GitHub 项目页面",
+    "About {app}":
+        "关于 {app}",
+    "Update to {version}…":
+        "更新到 {version}…",
+    "In use · scanning on this PC":
+        "使用中 · 正在本机扫描",
+    "In use by {who}":
+        "{who} 正在使用",
+    "{user} on {host}":
+        "{host} 上的 {user}",
+    "Started at {time}. Wait until the light turns green.":
+        "开始于 {time}。请等待指示灯变绿。",
+    "In use · scanner is busy":
+        "使用中 · 扫描仪忙碌",
+    "The scanner reports that it is scanning right now.":
+        "扫描仪报告正在扫描。",
+    "Idle · searching…":
+        "空闲 · 正在搜索…",
+    "Idle · no scanner":
+        "空闲 · 无扫描仪",
+    "No scanner is connected yet.":
+        "尚未连接扫描仪。",
+    "Idle · scanner on standby":
+        "空闲 · 扫描仪待机中",
+    "The scanner reports that it is stopped or offline.":
+        "扫描仪报告已停止或离线。",
+    "The scanner is free. You can scan.":
+        "扫描仪空闲，可以扫描。",
+    "Idle · installing OCR…":
+        "空闲 · 正在安装 OCR…",
+    "The scanner is free now. You can scan.":
+        "扫描仪现在空闲了，可以扫描。",
+    "Scanner in use":
+        "扫描仪使用中",
+    "The scanner is in use right now.\n\n{text}.\n{tip}\n\nPlease wait until the light at the top turns green, then try again.\nThis app will beep when the scanner is free.":
+        "扫描仪正在被使用。\n\n{text}。\n{tip}\n\n请等待顶部指示灯变绿后再试。\n扫描仪空闲时应用会发出提示音。",
+    "Scanner in use: {text}. Wait for the green light.":
+        "扫描仪使用中：{text}。请等待绿灯。",
+    "Scanner":
+        "扫描仪",
+    "Scanning":
+        "扫描",
+    "Text & translation":
+        "文字与翻译",
+    "General":
+        "常规",
+    "Done":
+        "完成",
+    "Driver":
+        "驱动",
+    "Model":
+        "型号",
+    "Network":
+        "网络",
+    "Auto (all drivers)":
+        "自动（所有驱动）",
+    "No scanner found yet":
+        "尚未找到扫描仪",
+    "Refresh":
+        "刷新",
+    "Driver setup":
+        "安装驱动",
+    "Find on network":
+        "在网络上查找",
+    "Web panel":
+        "网页面板",
+    "Find your model’s driver":
+        "查找你的型号的驱动",
+    "No network reply yet":
+        "网络尚无响应",
+    "Everything here is found automatically. Change it only if the wrong scanner is chosen.":
+        "这里的一切都会自动检测。只有选错扫描仪时才需要更改。",
+    "Save as":
+        "保存为",
+    "one PDF with every page":
+        "一个包含所有页面的 PDF",
+    "one JPG image per page":
+        "每页一张 JPG 图片",
+    "the PDF and the JPG images from one scan":
+        "同一次扫描的 PDF 和 JPG 图片",
+    "Paper source":
+        "纸张来源",
+    "Auto · feeder if loaded, else flatbed":
+        "自动 · 进纸器有纸时用进纸器，否则用平板",
+    "Flatbed (glass)":
+        "平板（玻璃）",
+    "Document feeder":
+        "自动进纸器",
+    "Document feeder · both sides":
+        "自动进纸器 · 双面",
+    "Paper size":
+        "纸张大小",
+    "Resolution":
+        "分辨率",
+    "150 dpi · fast, small file":
+        "150 dpi · 快速，文件小",
+    "300 dpi · recommended":
+        "300 dpi · 推荐",
+    "600 dpi · fine detail":
+        "600 dpi · 精细细节",
+    "Colour":
+        "彩色",
+    "Greyscale":
+        "灰度",
+    "Black and white":
+        "黑白",
+    "Save to":
+        "保存到",
+    "Browse…":
+        "浏览…",
+    "Ask for a file name every time":
+        "每次都询问文件名",
+    "Open the file after scanning":
+        "扫描后打开文件",
+    "Auto source":
+        "自动来源",
+    "Flatbed":
+        "平板",
+    "Feeder":
+        "进纸器",
+    "Feeder · 2 sides":
+        "进纸器 · 双面",
+    "Make PDFs searchable with OCR (text recognition)":
+        "用 OCR（文字识别）使 PDF 可搜索",
+    "OCR languages":
+        "OCR 语言",
+    "Auto · English + Greek + your system language":
+        "自动 · 英语 + 希腊语 + 系统语言",
+    "Choose languages":
+        "选择语言",
+    "Languages download automatically the first time they are used.":
+        "语言会在首次使用时自动下载。",
+    "Also save the text as a .txt file":
+        "同时将文字保存为 .txt 文件",
+    "Translate automatically to":
+        "自动翻译为",
+    "Off":
+        "关闭",
+    "Translation service":
+        "翻译服务",
+    "Google Translate (free)":
+        "Google 翻译（免费）",
+    "MyMemory (free)":
+        "MyMemory（免费）",
+    "LibreTranslate (your server)":
+        "LibreTranslate（你的服务器）",
+    "LibreTranslate server":
+        "LibreTranslate 服务器",
+    "API key (optional)":
+        "API 密钥（可选）",
+    "Free services need internet. Google falls back to MyMemory if it fails.":
+        "免费服务需要联网。Google 失败时会改用 MyMemory。",
+    "Theme":
+        "主题",
+    "Auto · follow Windows / system":
+        "自动 · 跟随 Windows / 系统",
+    "Light":
+        "浅色",
+    "Dark":
+        "深色",
+    "Language":
+        "语言",
+    "Auto · system language":
+        "自动 · 系统语言",
+    "Updates":
+        "更新",
+    "Check for updates automatically":
+        "自动检查更新",
+    "Check now":
+        "立即检查",
+    "Reset everything to Auto":
+        "全部恢复为自动",
+    "All settings are back to Auto.":
+        "所有设置已恢复为自动。",
+    "Restart to change the language?":
+        "重新启动以更改语言？",
+    "The new language is used after a restart. Restart now?":
+        "新语言将在重新启动后生效。现在重新启动吗？",
+    "Save scans to":
+        "扫描件保存到",
+    "Recognised text":
+        "识别的文字",
+    "Translation":
+        "翻译",
+    "Translate":
+        "翻译",
+    "From":
+        "从",
+    "To":
+        "到",
+    "Auto-detect":
+        "自动检测",
+    "Copy":
+        "复制",
+    "Save .txt":
+        "保存 .txt",
+    "Close":
+        "关闭",
+    "Copied.":
+        "已复制。",
+    "Detected language: {lang}":
+        "检测到的语言：{lang}",
+    "Translating with {engine}…":
+        "正在使用 {engine} 翻译…",
+    "Translated with {engine}. Detected: {lang}.":
+        "已使用 {engine} 翻译。检测到：{lang}。",
+    "Translation failed. {error}":
+        "翻译失败。{error}",
+    "Saved {name}":
+        "已保存 {name}",
+    "No text yet. Turn on OCR in Settings › Text & translation, then scan again.":
+        "还没有文字。请在 设置 › 文字与翻译 中开启 OCR，然后重新扫描。",
+    "Text of {name}":
+        "{name} 的文字",
+    "Looking for scanners ({drivers})…":
+        "正在查找扫描仪（{drivers}）…",
+    "Looking for scanners… {count} found so far.":
+        "正在查找扫描仪… 已找到 {count} 台。",
+    "Ready. Load the paper and click Scan.":
+        "就绪。放好纸张后点击“扫描”。",
+    "Search stopped. Click Search again when you are ready.":
+        "已停止搜索。准备好后点击“重新搜索”。",
+    "No scanners found. Check the cable or Wi-Fi and the installed driver (Settings › Scanner › Driver setup).":
+        "未找到扫描仪。请检查线缆或 Wi-Fi 以及已安装的驱动（设置 › 扫描仪 › 安装驱动）。",
+    "The NAPS2 scanner engine was not found. Close and reopen the app to install it automatically.":
+        "未找到扫描引擎 NAPS2。关闭并重新打开应用即可自动安装。",
+    "Scanning a quick low-resolution preview…":
+        "正在扫描低分辨率快速预览…",
+    "Check the page placement, then scan at your chosen resolution.":
+        "检查页面位置，然后以所选分辨率扫描。",
+    "Flatbed preview":
+        "平板预览",
+    "Back":
+        "返回",
+    "Preview ready.":
+        "预览已就绪。",
+    "No preview was produced. Check the flatbed and scanner connection.":
+        "未生成预览。请检查平板和扫描仪连接。",
+    "Scanning from {where}… Keep the scanner on until the file is saved.":
+        "正在从{where}扫描… 文件保存前请勿关闭扫描仪。",
+    "the flatbed":
+        "平板",
+    "the document feeder":
+        "自动进纸器",
+    "the document feeder (both sides)":
+        "自动进纸器（双面）",
+    " Recognising text (OCR)…":
+        " 正在识别文字 (OCR)…",
+    "Downloading OCR languages ({langs}). One time only…":
+        "正在下载 OCR 语言（{langs}）。仅需一次…",
+    "OCR languages could not be installed ({langs}). Scanning without OCR.":
+        "无法安装 OCR 语言（{langs}）。将不使用 OCR 进行扫描。",
+    "Scan cancelled.":
+        "已取消扫描。",
+    "The scanner is busy. Someone else may be using it. Wait a moment, then try again.":
+        "扫描仪忙。可能有其他人正在使用。请稍候再试。",
+    "Windows could not reach the Canon scanner. Turn it on, make sure it is on the same Wi-Fi, and check it in Canon IJ Scan Utility, then retry.":
+        "Windows 无法连接 Canon 扫描仪。请打开扫描仪，确认它连接同一 Wi-Fi，并在 Canon IJ Scan Utility 中检查，然后重试。",
+    "Epson Scan 2 could not open the scanner. In Epson Scan 2 Utility, add or test its network address, then retry.":
+        "Epson Scan 2 无法打开扫描仪。请在 Epson Scan 2 Utility 中添加或测试其网络地址，然后重试。",
+    "Scanner operation failed. {detail}":
+        "扫描仪操作失败。{detail}",
+    "No pages were scanned. Check the paper and the scanner connection.":
+        "未扫描任何页面。请检查纸张和扫描仪连接。",
+    "Could not save the scan. {error}":
+        "无法保存扫描件。{error}",
+    "The scan was kept as {path}":
+        "扫描件已保留为 {path}",
+    "✓ Saved {files} in {folder}":
+        "✓ 已将 {files} 保存到 {folder}",
+    "{count} JPG pages":
+        "{count} 页 JPG",
+    "text":
+        "文字",
+    "Translating the text to {lang}…":
+        "正在将文字翻译为{lang}…",
+    "✓ Translation saved: {name}":
+        "✓ 翻译已保存：{name}",
+    "Could not start NAPS2. {error}":
+        "无法启动 NAPS2。{error}",
+    "Could not create {folder}. {error}\nChoose another folder in Settings › Scanning.":
+        "无法创建 {folder}。{error}\n请在 设置 › 扫描 中选择其他文件夹。",
+    "Save scan":
+        "保存扫描件",
+    "Scan in progress":
+        "正在扫描",
+    "A scan is running. Cancel it and close the app?":
+        "正在扫描。要取消扫描并关闭应用吗？",
+    "JPG export needs PyMuPDF. Close and reopen the app to install it.":
+        "导出 JPG 需要 PyMuPDF。关闭并重新打开应用即可自动安装。",
+    "Checking GitHub for a newer version…":
+        "正在 GitHub 上检查新版本…",
+    "Could not check for updates. {error}":
+        "无法检查更新。{error}",
+    "You have the latest version (v{version}).":
+        "你使用的是最新版本 (v{version})。",
+    "Update available":
+        "有可用更新",
+    "{app} {version} is available (you have v{current}).\n\nWhat's new:\n{notes}\n\nDownload and install it now?":
+        "{app} {version} 已推出（你的版本是 v{current}）。\n\n新内容：\n{notes}\n\n现在下载并安装吗？",
+    "No release notes.":
+        "没有发行说明。",
+    "Update {version} is waiting in Help.":
+        "更新 {version} 正在“帮助”中等你。",
+    "Finish the scan first, then install the update from Help.":
+        "请先完成扫描，再从“帮助”安装更新。",
+    "Downloading {version} from GitHub…":
+        "正在从 GitHub 下载 {version}…",
+    "Update failed. {error}":
+        "更新失败。{error}",
+    "macOS is running the app from a temporary read-only copy. Drag What the Scan into Applications, open it from there, then update again.":
+        "macOS 正在从临时的只读副本运行本应用。请将 What the Scan 拖到“应用程序”，从那里打开，然后再次更新。",
+    "The app's folder can't be written to. Move the app to a folder you own (or Applications) and update again.":
+        "无法写入应用所在文件夹。请将应用移到你自己的文件夹（或“应用程序”）后再次更新。",
+    "Update failed":
+        "更新失败",
+    "{error}\n\nOpen the release page to download it by hand?":
+        "{error}\n\n打开发布页面手动下载吗？",
+    "Updated to {version}. Restarting…":
+        "已更新到 {version}。正在重新启动…",
+    "Choose a model to find its driver.":
+        "请选择型号以查找其驱动。",
+    "Install driver":
+        "安装驱动",
+    "Download and install the official {label} now?\n\nWindows may ask for permission. Choose No to open the support page instead.":
+        "现在下载并安装官方 {label} 吗？\n\nWindows 可能会请求权限。选择“否”可改为打开支持页面。",
+    "Preparing the official {label} installer…":
+        "正在准备官方 {label} 安装程序…",
+    "{label} installed. Looking for scanners…":
+        "{label} 已安装。正在查找扫描仪…",
+    "Driver setup failed. {error}\nThe support page is opening so you can install it by hand.":
+        "驱动安装失败。{error}\n正在打开支持页面，以便你手动安装。",
+    "Searching the local network for scanners (Epson, Canon, HP, AirPrint)…":
+        "正在本地网络中查找扫描仪（Epson、Canon、HP、AirPrint）…",
+    "answered as a network (eSCL) scanner ✓":
+        "以网络扫描仪 (eSCL) 身份响应 ✓",
+    "This scanner has: {sources}":
+        "此扫描仪支持：{sources}",
+    "Network discovery failed. {error}":
+        "网络搜索失败。{error}",
+    "Select your scanner's network address.":
+        "请选择扫描仪的网络地址。",
+    "No scanner replied on this local network.":
+        "此本地网络中没有扫描仪响应。",
+    "answered as a Canon scanner ✓":
+        "以 Canon 扫描仪身份响应 ✓",
+    "responds on the scanner port ✓":
+        "扫描仪端口有响应 ✓",
+    "did not respond on the scanner port":
+        "扫描仪端口无响应",
+    "{brand} {ip} {state}. Scanning uses the driver chosen above.":
+        "{brand} {ip} {state}。扫描使用上面选择的驱动。",
+}
+
+TRANSLATIONS = {"el": GR, "fr": UI_FR, "de": UI_DE, "it": UI_IT, "es": UI_ES, "ro": UI_RO, "cs": UI_CS,
+                "ru": UI_RU, "ja": UI_JA, "zh": UI_ZH}
+UI_LANGUAGES = (("en", "English"), ("el", "Ελληνικά"), ("fr", "Français"), ("de", "Deutsch"),
+                ("it", "Italiano"), ("es", "Español"), ("ro", "Română"), ("cs", "Čeština"),
+                ("ru", "Русский"), ("ja", "日本語"), ("zh", "中文 (简体)"))
+
 def tr(message, /, **values):
-    result = GR.get(message, message) if UI_LANG == "el" else message
+    result = TRANSLATIONS[UI_LANG].get(message, message) if UI_LANG in TRANSLATIONS else message
     return result.format(**values) if values else result
 
 
@@ -2271,7 +8246,14 @@ def lang_name(code):
     names = LANG_NAMES.get(code)
     if not names:
         return code or "?"
-    return names[1] if UI_LANG == "el" else names[0]
+    if UI_LANG == "el":
+        return names[1]
+    if UI_LANG != "en":
+        from PyQt6.QtCore import QLocale
+        native = "English" if code == "en" else QLocale(code.replace("-", "_")).nativeLanguageName()
+        if native:
+            return native[:1].upper() + native[1:]
+    return names[0]
 
 
 def system_language():
@@ -2280,9 +8262,11 @@ def system_language():
 
 
 def resolve_ui_language(setting):
-    if setting in ("en", "el"):
+    supported = {code for code, _ in UI_LANGUAGES}
+    if setting in supported:
         return setting
-    return "el" if system_language() == "el" else "en"
+    system = system_language()
+    return system if system in supported else "en"
 
 
 # ---------------------------------------------------------------- text & translation
@@ -3139,7 +9123,7 @@ def phone_page(link):
         "error": tr("Sending failed. Check that the phone is on the same Wi-Fi and try again."),
         "sending": tr("Sending {name}…", name="%s"), "done": tr("✓ Sent! The files are on the computer."),
     })
-    lang = "el" if UI_LANG == "el" else "en"
+    lang = UI_LANG
     return f"""<!DOCTYPE html><html lang="{lang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>{esc(APP_NAME)}</title>
 <style>
@@ -3202,6 +9186,52 @@ def qr_pixmap(text, size=220):
     return pixmap
 
 
+_AIRDROP_KEEP = []
+
+
+def airdrop(paths, check_only=False):
+    """macOS: open the system AirDrop window for these files (Apple's own NSSharingService, called through
+    the Objective-C runtime, so nothing extra to install). Returns False when AirDrop is not available."""
+    if not MAC:
+        return False
+    import ctypes
+    import ctypes.util
+    objc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("objc"))
+    ctypes.cdll.LoadLibrary("/System/Library/Frameworks/AppKit.framework/AppKit")
+    objc.objc_getClass.restype = ctypes.c_void_p
+    objc.objc_getClass.argtypes = [ctypes.c_char_p]
+    objc.sel_registerName.restype = ctypes.c_void_p
+    objc.sel_registerName.argtypes = [ctypes.c_char_p]
+    send = objc.objc_msgSend
+
+    def call(target, selector, *args, restype=ctypes.c_void_p, argtypes=()):
+        send.restype = restype
+        send.argtypes = [ctypes.c_void_p, ctypes.c_void_p, *argtypes]
+        return send(target, objc.sel_registerName(selector.encode()), *args)
+
+    def cls(name):
+        return objc.objc_getClass(name.encode())
+
+    def text(value):
+        return call(cls("NSString"), "stringWithUTF8String:", str(value).encode("utf-8"),
+                    argtypes=[ctypes.c_char_p])
+
+    items = call(cls("NSMutableArray"), "array")
+    for path in paths:
+        url = call(cls("NSURL"), "fileURLWithPath:", text(path), argtypes=[ctypes.c_void_p])
+        call(items, "addObject:", url, argtypes=[ctypes.c_void_p])
+    service = call(cls("NSSharingService"), "sharingServiceNamed:", text("com.apple.share.AirDrop.send"),
+                   argtypes=[ctypes.c_void_p])
+    if not service or not call(service, "canPerformWithItems:", items, restype=ctypes.c_bool,
+                               argtypes=[ctypes.c_void_p]):
+        return False
+    if check_only:
+        return True
+    _AIRDROP_KEEP[:] = [call(service, "retain"), call(items, "retain")]  # alive while the window is open
+    call(service, "performWithItems:", items, restype=None, argtypes=[ctypes.c_void_p])
+    return True
+
+
 class PhoneBridge(QObject):
     """Moves PhoneLink events from its threads to the GUI thread."""
     device = pyqtSignal(dict)
@@ -3254,6 +9284,12 @@ class PhoneDialog(QDialog):
         window.iconize(choose, "folder")
         choose.clicked.connect(self.choose_files)
         what_row.addWidget(choose)
+        if MAC:
+            self.airdrop_button = QPushButton(tr("AirDrop"))
+            self.airdrop_button.setToolTip(tr("Send with AirDrop to an iPhone, iPad or Mac nearby"))
+            window.iconize(self.airdrop_button, "phone")
+            self.airdrop_button.clicked.connect(self.send_airdrop)
+            what_row.addWidget(self.airdrop_button)
         outer.addWidget(what)
 
         columns = QHBoxLayout()
@@ -3368,6 +9404,19 @@ class PhoneDialog(QDialog):
             self.main.phone_link.shared = list(self.files)
         self.update_buttons()
 
+    def send_airdrop(self):
+        if not self.files:
+            return
+        try:
+            ok = airdrop(self.files)
+        except Exception as exc:
+            ok, detail = False, str(exc)
+        else:
+            detail = ""
+        self.send_status.setText(tr("AirDrop is open: choose the iPhone or Mac.") if ok else
+                                 "⚠ " + tr("AirDrop is not available on this Mac. Turn on Wi-Fi and Bluetooth.")
+                                 + (f" ({detail})" if detail else ""))
+
     def choose_files(self):
         start = str(self.files[0].parent if self.files else self.main.output_folder())
         names, _ = QFileDialog.getOpenFileNames(self, tr("Choose files for the phone"), start)
@@ -3411,6 +9460,8 @@ class PhoneDialog(QDialog):
     def update_buttons(self):
         self.send_button.setEnabled(bool(self.files) and self.devices.currentItem() is not None
                                     and not self.sending)
+        if MAC:
+            self.airdrop_button.setEnabled(bool(self.files))
         self.search_button.setEnabled(not self.sending)
 
     def send(self):
@@ -4133,7 +10184,7 @@ class Scanner(QWidget):
         self.ocr_list.setMinimumHeight(150)
         chosen = set(str(self.settings.value("ocr_langs", "eng,ell")).split(","))
         for code, (english, greek, tess) in LANG_NAMES.items():
-            item = QListWidgetItem(f"{greek if UI_LANG == 'el' else english}  ({tess})")
+            item = QListWidgetItem(f"{lang_name(code)}  ({tess})")
             item.setData(Qt.ItemDataRole.UserRole, tess)
             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
             item.setCheckState(Qt.CheckState.Checked if tess in chosen else Qt.CheckState.Unchecked)
@@ -4204,7 +10255,7 @@ class Scanner(QWidget):
         page, box = self.settings_page(tr("General"), tr("Language, appearance and updates."))
         form = self.section(box, tr("Appearance"))
         self.language = self.choice(form, "Language", [
-            ("Auto · system language", "auto"), ("English", "en"), ("Ελληνικά", "el"),
+            ("Auto · system language", "auto"), *((name, code) for code, name in UI_LANGUAGES),
         ], "ui_lang")
         self.language.currentIndexChanged.connect(self.language_changed)
         self.theme = self.choice(form, "Theme", [
@@ -4261,7 +10312,8 @@ class Scanner(QWidget):
             codes = [c for c in str(self.settings.value("ocr_langs", "eng,ell")).split(",") if c]
             return codes or ["eng"]
         codes = ["eng", "ell"]
-        system = LANG_NAMES.get(system_language())
+        system = LANG_NAMES.get(system_language()) or LANG_NAMES.get(
+            {"zh": "zh-CN"}.get(system_language(), ""))
         if system and system[2] not in codes:
             codes.append(system[2])
         return codes
@@ -4295,7 +10347,7 @@ class Scanner(QWidget):
 
     # ---------- help ----------
     def show_guide(self):
-        QMessageBox.information(self, tr("Quick guide"), GUIDE_GR if UI_LANG == "el" else GUIDE)
+        QMessageBox.information(self, tr("Quick guide"), GUIDES.get(UI_LANG, GUIDES["en"]))
 
     def show_about(self):
         box = QMessageBox(self)
@@ -5178,7 +11230,7 @@ class Scanner(QWidget):
         for code in LANG_NAMES:
             source.addItem(lang_name(code), code)
             target.addItem(lang_name(code), code)
-        default_target = self.auto_translate.currentData() or ("el" if UI_LANG == "el" else "en")
+        default_target = self.auto_translate.currentData() or ("zh-CN" if UI_LANG == "zh" else UI_LANG)
         target.setCurrentIndex(max(0, target.findData(default_target)))
         engine = self.choice(None, "Translation service", ENGINES, "engine")
         go = QPushButton(tr("Translate"))
@@ -5556,6 +11608,13 @@ if __name__ == "__main__":
             if (window.discoveries or not window.searched_once) and time.monotonic() - started < 40:
                 QTimer.singleShot(500, smoke_done)
                 return
+            if MAC:
+                try:
+                    probe = Path(tempfile.gettempdir()) / "whatthescan-airdrop.txt"
+                    probe.write_text("AirDrop check")
+                    smoke(f"AirDrop: {'available' if airdrop([probe], check_only=True) else 'not available'}")
+                except Exception as exc:
+                    smoke(f"ERROR AirDrop check: {exc}")
             smoke(f"OK window started · {window.device.count()} scanner(s) · status: {window.status_text()}")
             app.exit(0)
 
