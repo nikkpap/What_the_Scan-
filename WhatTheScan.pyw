@@ -2311,6 +2311,16 @@ def apply_theme(mode):
 UI_LANG = "en"
 
 GR = {
+    "Connect Epson Scan 2 to the scanner":
+        "Σύνδεση του Epson Scan 2 με τον σαρωτή",
+    "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
+        "Το Epson Scan 2 δεν ξέρει ακόμα τη διεύθυνση δικτύου του σαρωτή. Συμβαίνει μετά από (επαν)εγκατάσταση του driver. Μόνο μία φορά:",
+    "1. Click “Open Epson Scan 2 Utility” below.\n2. At the top, in “Scanner”, choose “Settings”.\n3. Click “Add”, choose “Enter address”, press Ctrl+V (the address {ip} is already copied) and click OK.\n4. Click OK, close the utility and press Scan again.":
+        "1. Πάτα «Άνοιγμα Epson Scan 2 Utility» παρακάτω.\n2. Πάνω, στο «Scanner», διάλεξε «Settings».\n3. Πάτα «Add», διάλεξε «Enter address», πάτα Ctrl+V (η διεύθυνση {ip} έχει ήδη αντιγραφεί) και OK.\n4. Πάτα OK, κλείσε το utility και ξαναπάτα Σάρωση.",
+    "Open Epson Scan 2 Utility":
+        "Άνοιγμα Epson Scan 2 Utility",
+    "Could not open Epson Scan 2 Utility. {error}":
+        "Δεν άνοιξε το Epson Scan 2 Utility. {error}",
     "{phone} (browser)": "{phone} (browser)",
     "AirDrop":
         "AirDrop",
@@ -2688,6 +2698,16 @@ LANG_NAMES = {  # code: (English, Greek, tesseract code)
 
 # Other interface languages (keys are the English texts, like GR above).
 UI_FR = {
+    "Connect Epson Scan 2 to the scanner":
+        "Connecter Epson Scan 2 au scanner",
+    "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
+        "Epson Scan 2 ne connaît pas encore l’adresse réseau de votre scanner. Cela arrive après une (ré)installation du pilote. Une seule fois :",
+    "1. Click “Open Epson Scan 2 Utility” below.\n2. At the top, in “Scanner”, choose “Settings”.\n3. Click “Add”, choose “Enter address”, press Ctrl+V (the address {ip} is already copied) and click OK.\n4. Click OK, close the utility and press Scan again.":
+        "1. Cliquez sur « Ouvrir Epson Scan 2 Utility » ci-dessous.\n2. En haut, dans « Scanner », choisissez « Settings ».\n3. Cliquez sur « Add », choisissez « Enter address », appuyez sur Ctrl+V (l’adresse {ip} est déjà copiée) et cliquez sur OK.\n4. Cliquez sur OK, fermez l’utilitaire et appuyez à nouveau sur Numériser.",
+    "Open Epson Scan 2 Utility":
+        "Ouvrir Epson Scan 2 Utility",
+    "Could not open Epson Scan 2 Utility. {error}":
+        "Impossible d’ouvrir Epson Scan 2 Utility. {error}",
     "{phone} (browser)": "{phone} (navigateur)",
     "AirDrop":
         "AirDrop",
@@ -3304,6 +3324,16 @@ UI_FR = {
 }
 
 UI_DE = {
+    "Connect Epson Scan 2 to the scanner":
+        "Epson Scan 2 mit dem Scanner verbinden",
+    "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
+        "Epson Scan 2 kennt die Netzwerkadresse Ihres Scanners noch nicht. Das passiert nach einer (Neu-)Installation des Treibers. Nur einmal:",
+    "1. Click “Open Epson Scan 2 Utility” below.\n2. At the top, in “Scanner”, choose “Settings”.\n3. Click “Add”, choose “Enter address”, press Ctrl+V (the address {ip} is already copied) and click OK.\n4. Click OK, close the utility and press Scan again.":
+        "1. Klicken Sie unten auf „Epson Scan 2 Utility öffnen“.\n2. Wählen Sie oben bei „Scanner“ den Eintrag „Settings“.\n3. Klicken Sie auf „Add“, wählen Sie „Enter address“, drücken Sie Strg+V (die Adresse {ip} ist schon kopiert) und klicken Sie auf OK.\n4. Klicken Sie auf OK, schließen Sie das Programm und drücken Sie erneut Scannen.",
+    "Open Epson Scan 2 Utility":
+        "Epson Scan 2 Utility öffnen",
+    "Could not open Epson Scan 2 Utility. {error}":
+        "Epson Scan 2 Utility konnte nicht geöffnet werden. {error}",
     "{phone} (browser)": "{phone} (Browser)",
     "AirDrop":
         "AirDrop",
@@ -3920,6 +3950,16 @@ UI_DE = {
 }
 
 UI_IT = {
+    "Connect Epson Scan 2 to the scanner":
+        "Collega Epson Scan 2 allo scanner",
+    "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
+        "Epson Scan 2 non conosce ancora l’indirizzo di rete dello scanner. Succede dopo la (re)installazione del driver. Solo una volta:",
+    "1. Click “Open Epson Scan 2 Utility” below.\n2. At the top, in “Scanner”, choose “Settings”.\n3. Click “Add”, choose “Enter address”, press Ctrl+V (the address {ip} is already copied) and click OK.\n4. Click OK, close the utility and press Scan again.":
+        "1. Fai clic su «Apri Epson Scan 2 Utility» qui sotto.\n2. In alto, in «Scanner», scegli «Settings».\n3. Fai clic su «Add», scegli «Enter address», premi Ctrl+V (l’indirizzo {ip} è già copiato) e fai clic su OK.\n4. Fai clic su OK, chiudi l’utility e premi di nuovo Scansiona.",
+    "Open Epson Scan 2 Utility":
+        "Apri Epson Scan 2 Utility",
+    "Could not open Epson Scan 2 Utility. {error}":
+        "Impossibile aprire Epson Scan 2 Utility. {error}",
     "{phone} (browser)": "{phone} (browser)",
     "AirDrop":
         "AirDrop",
@@ -4536,6 +4576,16 @@ UI_IT = {
 }
 
 UI_ES = {
+    "Connect Epson Scan 2 to the scanner":
+        "Conectar Epson Scan 2 con el escáner",
+    "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
+        "Epson Scan 2 todavía no conoce la dirección de red de tu escáner. Pasa tras (re)instalar el controlador. Solo una vez:",
+    "1. Click “Open Epson Scan 2 Utility” below.\n2. At the top, in “Scanner”, choose “Settings”.\n3. Click “Add”, choose “Enter address”, press Ctrl+V (the address {ip} is already copied) and click OK.\n4. Click OK, close the utility and press Scan again.":
+        "1. Haz clic en «Abrir Epson Scan 2 Utility» abajo.\n2. Arriba, en «Scanner», elige «Settings».\n3. Haz clic en «Add», elige «Enter address», pulsa Ctrl+V (la dirección {ip} ya está copiada) y haz clic en OK.\n4. Haz clic en OK, cierra la utilidad y pulsa Escanear de nuevo.",
+    "Open Epson Scan 2 Utility":
+        "Abrir Epson Scan 2 Utility",
+    "Could not open Epson Scan 2 Utility. {error}":
+        "No se pudo abrir Epson Scan 2 Utility. {error}",
     "{phone} (browser)": "{phone} (navegador)",
     "AirDrop":
         "AirDrop",
@@ -5152,6 +5202,16 @@ UI_ES = {
 }
 
 UI_RO = {
+    "Connect Epson Scan 2 to the scanner":
+        "Conectați Epson Scan 2 la scanner",
+    "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
+        "Epson Scan 2 nu cunoaște încă adresa de rețea a scannerului. Se întâmplă după (re)instalarea driverului. O singură dată:",
+    "1. Click “Open Epson Scan 2 Utility” below.\n2. At the top, in “Scanner”, choose “Settings”.\n3. Click “Add”, choose “Enter address”, press Ctrl+V (the address {ip} is already copied) and click OK.\n4. Click OK, close the utility and press Scan again.":
+        "1. Faceți clic pe „Deschide Epson Scan 2 Utility” mai jos.\n2. Sus, la „Scanner”, alegeți „Settings”.\n3. Faceți clic pe „Add”, alegeți „Enter address”, apăsați Ctrl+V (adresa {ip} este deja copiată) și faceți clic pe OK.\n4. Faceți clic pe OK, închideți utilitarul și apăsați din nou Scanează.",
+    "Open Epson Scan 2 Utility":
+        "Deschide Epson Scan 2 Utility",
+    "Could not open Epson Scan 2 Utility. {error}":
+        "Epson Scan 2 Utility nu s-a putut deschide. {error}",
     "{phone} (browser)": "{phone} (browser)",
     "AirDrop":
         "AirDrop",
@@ -5768,6 +5828,16 @@ UI_RO = {
 }
 
 UI_CS = {
+    "Connect Epson Scan 2 to the scanner":
+        "Připojit Epson Scan 2 ke skeneru",
+    "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
+        "Epson Scan 2 zatím nezná síťovou adresu vašeho skeneru. Stává se to po (pře)instalaci ovladače. Jen jednou:",
+    "1. Click “Open Epson Scan 2 Utility” below.\n2. At the top, in “Scanner”, choose “Settings”.\n3. Click “Add”, choose “Enter address”, press Ctrl+V (the address {ip} is already copied) and click OK.\n4. Click OK, close the utility and press Scan again.":
+        "1. Klikněte níže na „Otevřít Epson Scan 2 Utility“.\n2. Nahoře v poli „Scanner“ vyberte „Settings“.\n3. Klikněte na „Add“, vyberte „Enter address“, stiskněte Ctrl+V (adresa {ip} je už zkopírovaná) a klikněte na OK.\n4. Klikněte na OK, zavřete nástroj a znovu stiskněte Skenovat.",
+    "Open Epson Scan 2 Utility":
+        "Otevřít Epson Scan 2 Utility",
+    "Could not open Epson Scan 2 Utility. {error}":
+        "Epson Scan 2 Utility se nepodařilo otevřít. {error}",
     "{phone} (browser)": "{phone} (prohlížeč)",
     "AirDrop":
         "AirDrop",
@@ -6384,6 +6454,16 @@ UI_CS = {
 }
 
 UI_RU = {
+    "Connect Epson Scan 2 to the scanner":
+        "Подключить Epson Scan 2 к сканеру",
+    "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
+        "Epson Scan 2 ещё не знает сетевой адрес сканера. Так бывает после (пере)установки драйвера. Только один раз:",
+    "1. Click “Open Epson Scan 2 Utility” below.\n2. At the top, in “Scanner”, choose “Settings”.\n3. Click “Add”, choose “Enter address”, press Ctrl+V (the address {ip} is already copied) and click OK.\n4. Click OK, close the utility and press Scan again.":
+        "1. Нажмите ниже «Открыть Epson Scan 2 Utility».\n2. Вверху в поле «Scanner» выберите «Settings».\n3. Нажмите «Add», выберите «Enter address», нажмите Ctrl+V (адрес {ip} уже скопирован) и OK.\n4. Нажмите OK, закройте утилиту и снова нажмите «Сканировать».",
+    "Open Epson Scan 2 Utility":
+        "Открыть Epson Scan 2 Utility",
+    "Could not open Epson Scan 2 Utility. {error}":
+        "Не удалось открыть Epson Scan 2 Utility. {error}",
     "{phone} (browser)": "{phone} (браузер)",
     "AirDrop":
         "AirDrop",
@@ -7000,6 +7080,16 @@ UI_RU = {
 }
 
 UI_JA = {
+    "Connect Epson Scan 2 to the scanner":
+        "Epson Scan 2 をスキャナーに接続",
+    "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
+        "Epson Scan 2 はまだスキャナーのネットワークアドレスを知りません。ドライバーを（再）インストールした後に起こります。最初の一度だけ:",
+    "1. Click “Open Epson Scan 2 Utility” below.\n2. At the top, in “Scanner”, choose “Settings”.\n3. Click “Add”, choose “Enter address”, press Ctrl+V (the address {ip} is already copied) and click OK.\n4. Click OK, close the utility and press Scan again.":
+        "1. 下の「Epson Scan 2 Utility を開く」をクリックします。\n2. 上部の「Scanner」で「Settings」を選びます。\n3. 「Add」をクリックし、「Enter address」を選んで Ctrl+V を押し（アドレス {ip} はコピー済み）、OK をクリックします。\n4. OK をクリックしてユーティリティを閉じ、もう一度「スキャン」を押します。",
+    "Open Epson Scan 2 Utility":
+        "Epson Scan 2 Utility を開く",
+    "Could not open Epson Scan 2 Utility. {error}":
+        "Epson Scan 2 Utility を開けませんでした。{error}",
     "{phone} (browser)": "{phone}（ブラウザー）",
     "AirDrop":
         "AirDrop",
@@ -7616,6 +7706,16 @@ UI_JA = {
 }
 
 UI_ZH = {
+    "Connect Epson Scan 2 to the scanner":
+        "将 Epson Scan 2 连接到扫描仪",
+    "Epson Scan 2 does not know your scanner's network address yet. This happens after the driver is (re)installed. One time only:":
+        "Epson Scan 2 还不知道扫描仪的网络地址。这通常发生在（重新）安装驱动之后。只需设置一次：",
+    "1. Click “Open Epson Scan 2 Utility” below.\n2. At the top, in “Scanner”, choose “Settings”.\n3. Click “Add”, choose “Enter address”, press Ctrl+V (the address {ip} is already copied) and click OK.\n4. Click OK, close the utility and press Scan again.":
+        "1. 点击下方的“打开 Epson Scan 2 Utility”。\n2. 在顶部的“Scanner”中选择“Settings”。\n3. 点击“Add”，选择“Enter address”，按 Ctrl+V（地址 {ip} 已复制），然后点击 OK。\n4. 点击 OK，关闭该工具，再次按“扫描”。",
+    "Open Epson Scan 2 Utility":
+        "打开 Epson Scan 2 Utility",
+    "Could not open Epson Scan 2 Utility. {error}":
+        "无法打开 Epson Scan 2 Utility。{error}",
     "{phone} (browser)": "{phone}（浏览器）",
     "AirDrop":
         "隔空投送",
@@ -10832,6 +10932,55 @@ class Scanner(QWidget):
         self.update_led()
         QTimer.singleShot(0, self.offer_missing_driver)
 
+    @staticmethod
+    def epson_utility():
+        """Epson Scan 2 Utility on Windows: its Start-menu shortcut, else the program folder."""
+        roots = [Path(os.environ.get(name, "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs"
+                 for name in ("ProgramData", "APPDATA") if os.environ.get(name)]
+        for root in roots:
+            for link in sorted(root.glob("EPSON*/**/Epson Scan 2 Utility*.lnk")):
+                return link
+        for base in (os.environ.get("ProgramFiles(x86)"), os.environ.get("ProgramFiles")):
+            folder = Path(base or "") / "epson" / "Epson Scan 2"
+            if base and folder.is_dir():
+                for exe in sorted(folder.rglob("*.exe")):
+                    if "utility" in exe.name.lower() and "maint" not in exe.name.lower():
+                        return exe
+        return None
+
+    def guide_epson_network(self):
+        """After a fresh Epson driver install, Epson Scan 2 does not know the scanner's network address
+        yet. The app knows it: copy it and walk the user through the 4 clicks in Epson's own utility."""
+        if getattr(self, "epson_guide_open", False):
+            return
+        network = self.network.currentData()
+        ip = network[0] if network else ""
+        if ip:
+            QGuiApplication.clipboard().setText(ip)
+        utility = self.epson_utility()
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Information)
+        box.setWindowTitle(tr("Connect Epson Scan 2 to the scanner"))
+        box.setText(tr("Epson Scan 2 does not know your scanner's network address yet. "
+                       "This happens after the driver is (re)installed. One time only:"))
+        box.setInformativeText(tr(
+            "1. Click “Open Epson Scan 2 Utility” below.\n"
+            "2. At the top, in “Scanner”, choose “Settings”.\n"
+            "3. Click “Add”, choose “Enter address”, press Ctrl+V (the address {ip} is already copied) "
+            "and click OK.\n"
+            "4. Click OK, close the utility and press Scan again.", ip=ip or "?"))
+        open_button = box.addButton(tr("Open Epson Scan 2 Utility"), QMessageBox.ButtonRole.AcceptRole) \
+            if utility else None
+        box.addButton(tr("Close"), QMessageBox.ButtonRole.RejectRole)
+        self.epson_guide_open = True
+        box.exec()
+        self.epson_guide_open = False
+        if open_button is not None and box.clickedButton() is open_button:
+            try:
+                os.startfile(str(utility))  # noqa: the .lnk or .exe opens like a double-click
+            except OSError as exc:
+                self.set_status(tr("Could not open Epson Scan 2 Utility. {error}", error=exc), "error")
+
     def missing_driver(self):
         """A scanner answers on the network, but no driver sees it: which official driver is missing?"""
         windir = Path(os.environ.get("WINDIR", r"C:\Windows"))
@@ -11079,6 +11228,7 @@ class Scanner(QWidget):
             elif WINDOWS and "offline" in lowered and driver == "twain":
                 self.set_status(tr("Epson Scan 2 could not open the scanner. In Epson Scan 2 Utility, add or test its network address, then retry."),
                                 "error")
+                QTimer.singleShot(0, self.guide_epson_network)
             else:
                 self.set_status(tr("Scanner operation failed. {detail}", detail=detail), "error")
         elif self.previewing:
