@@ -1,13 +1,13 @@
-## What the Scan?! v1.0.11 — Brother
+## What the Scan?! v1.0.12 — LocalSend for phones and computers
 
 ### English
-- **Brother support (models from 2024):** MFC / DCP laser and colour laser, INKvestment and A3 inkjets and ADS document scanners, e.g. MFC-L2820DW, MFC-L2900DW, DCP-L3560CDW, MFC-L3760CDW, MFC-L8730CDW, MFC-J4355DW, MFC-J6960DW, MFC-J3960DW, ADS-1800W.
-  - They are found automatically and scan over the network with no driver (AirPrint / eSCL), with the status light and paper sources reported by the scanner.
-  - With Brother's own driver package they also work through TWAIN / WIA. Settings › Scanner › Driver setup opens Brother's download page and copies the model name.
-- Includes everything from v1.0.10: 11 languages, AirDrop on Mac, Epson Scan 2 network guide.
+- The **Phone** button is now **LocalSend**: send files to phones **and computers** (Windows, Mac, Linux) on the same network, and receive from them. Works with another What the Scan or with the official LocalSend app.
+- Computers show a computer icon, phones a phone icon, in **Devices with LocalSend**.
+- **Drag & drop:** drag any files onto the LocalSend window to send them.
+- **Mac:** a one-time note explains macOS's *Local Network* permission (and where to turn it on if it was refused).
 
 ### Ελληνικά
-- **Υποστήριξη Brother (μοντέλα από το 2024):** MFC / DCP laser και έγχρωμα laser, INKvestment και A3 inkjet και σαρωτές εγγράφων ADS, π.χ. MFC-L2820DW, MFC-L2900DW, DCP-L3560CDW, MFC-L3760CDW, MFC-L8730CDW, MFC-J4355DW, MFC-J6960DW, MFC-J3960DW, ADS-1800W.
-  - Βρίσκονται αυτόματα και σαρώνουν μέσω δικτύου χωρίς driver (AirPrint / eSCL), με φωτάκι κατάστασης και πηγές χαρτιού όπως τις αναφέρει ο σαρωτής.
-  - Με το πακέτο driver της Brother δουλεύουν και μέσω TWAIN / WIA. Ρυθμίσεις › Σαρωτής › Εγκατάσταση driver ανοίγει τη σελίδα λήψεων της Brother και αντιγράφει το μοντέλο.
-- Περιλαμβάνει όλα όσα έφερε η v1.0.10: 11 γλώσσες, AirDrop σε Mac, οδηγό δικτύου Epson Scan 2.
+- Το κουμπί **Κινητό** έγινε **LocalSend**: στείλε αρχεία σε κινητά **και υπολογιστές** (Windows, Mac, Linux) στο ίδιο δίκτυο και πάρε από αυτά. Δουλεύει με άλλο What the Scan ή με την επίσημη εφαρμογή LocalSend.
+- Στη λίστα **Συσκευές με LocalSend** οι υπολογιστές έχουν εικονίδιο υπολογιστή και τα κινητά εικονίδιο κινητού.
+- **Σύρσιμο αρχείων:** σύρε οποιαδήποτε αρχεία πάνω στο παράθυρο LocalSend για να τα στείλεις.
+- **Mac:** την πρώτη φορά εμφανίζεται εξήγηση για την άδεια *Τοπικό δίκτυο* του macOS (και πού ενεργοποιείται αν είχε απορριφθεί).

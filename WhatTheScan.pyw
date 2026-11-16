@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from concurrent.futures import ThreadPoolExecutor
 from queue import Empty, Queue
 
-VERSION = "1.0.11"
+VERSION = "1.0.12"
 # Change this one line to rename the app everywhere.
 APP_NAME = "What the Scan?!"
 APP_TAGLINE = "Scanner busy? Now you know who."
@@ -190,7 +190,7 @@ GUIDES = {
 
 BUTTONS
   Preview     quick look at the glass before scanning
-  Phone       send the scan to your phone, or receive photos from it
+  LocalSend   send files to phones and computers, or receive from them
   Text        recognised text (OCR), copy and translate
   Open last / Open folder
 
@@ -202,7 +202,7 @@ Everything is automatic by default:
   • OCR: English + Greek + your system language; languages download the first time.
   • Translation: Google Translate (free), MyMemory as a fallback.
 
-PHONE (same Wi-Fi)
+LOCALSEND (same Wi-Fi): phones and computers (Windows, Mac, Linux)
   • Phones with the free LocalSend app appear by themselves: pick one, press Send.
   • No LocalSend? Scan the QR code: a page opens to download the scan or send photos.
   • From the phone: in LocalSend choose "What the Scan · <this PC>", or use the QR page.
@@ -237,7 +237,7 @@ DRIVERS
 
 ΚΟΥΜΠΙΑ
   Προεπισκόπηση   γρήγορη ματιά στο τζάμι πριν τη σάρωση
-  Κινητό          στείλε τη σάρωση στο κινητό ή πάρε φωτογραφίες από αυτό
+  LocalSend       στείλε αρχεία σε κινητά και υπολογιστές ή πάρε από αυτά
   Κείμενο         το κείμενο που αναγνωρίστηκε (OCR), αντιγραφή και μετάφραση
   Τελευταίο / Φάκελος
 
@@ -249,7 +249,7 @@ DRIVERS
   • OCR: Αγγλικά + Ελληνικά + η γλώσσα του συστήματος· κατεβαίνουν την πρώτη φορά.
   • Μετάφραση: Google Translate (δωρεάν), με εφεδρεία το MyMemory.
 
-ΚΙΝΗΤΟ (ίδιο Wi-Fi)
+LOCALSEND (ίδιο Wi-Fi): κινητά και υπολογιστές (Windows, Mac, Linux)
   • Τα κινητά με τη δωρεάν εφαρμογή LocalSend εμφανίζονται μόνα τους: διάλεξε, «Αποστολή».
   • Χωρίς LocalSend; Σκάναρε το QR code: ανοίγει σελίδα για λήψη ή αποστολή φωτογραφιών.
   • Από το κινητό: στο LocalSend διάλεξε «What the Scan · <αυτό το PC>» ή τη σελίδα του QR.
@@ -284,7 +284,7 @@ DRIVERS
 
 BOUTONS
   Aperçu      coup d’œil rapide sur la vitre avant de numériser
-  Téléphone   envoyer la numérisation au téléphone, ou en recevoir des photos
+  LocalSend   envoyer des fichiers vers téléphones et ordinateurs, ou en recevoir
   Texte       texte reconnu (OCR), copier et traduire
   Dernier fichier / Dossier
 
@@ -296,7 +296,7 @@ Tout est automatique par défaut :
   • OCR : anglais + grec + la langue du système ; téléchargé la première fois.
   • Traduction : Google Traduction (gratuit), MyMemory en secours.
 
-TÉLÉPHONE (même Wi-Fi)
+LOCALSEND (même Wi-Fi) : téléphones et ordinateurs (Windows, Mac, Linux)
   • Les téléphones avec l’application gratuite LocalSend apparaissent seuls : choisissez, Envoyer.
   • Pas de LocalSend ? Scannez le code QR : une page s’ouvre pour télécharger ou envoyer des photos.
   • Depuis le téléphone : dans LocalSend, choisissez « What the Scan · <ce PC> » ou la page QR.
@@ -331,7 +331,7 @@ PILOTES
 
 SCHALTFLÄCHEN
   Vorschau    schneller Blick auf die Glasplatte vor dem Scan
-  Handy       Scan ans Handy senden oder Fotos davon empfangen
+  LocalSend   Dateien an Handys und Computer senden oder von ihnen empfangen
   Text        erkannter Text (OCR), kopieren und übersetzen
   Letzte öffnen / Ordner öffnen
 
@@ -343,7 +343,7 @@ Standardmäßig ist alles automatisch:
   • OCR: Englisch + Griechisch + Systemsprache; Download beim ersten Mal.
   • Übersetzung: Google Übersetzer (kostenlos), MyMemory als Ersatz.
 
-HANDY (gleiches WLAN)
+LOCALSEND (gleiches WLAN): Handys und Computer (Windows, Mac, Linux)
   • Handys mit der kostenlosen App LocalSend erscheinen von selbst: wählen, Senden.
   • Kein LocalSend? QR-Code scannen: eine Seite zum Herunterladen oder Senden von Fotos öffnet sich.
   • Vom Handy: in LocalSend „What the Scan · <dieser PC>“ wählen oder die QR-Seite nutzen.
@@ -378,7 +378,7 @@ TREIBER
 
 PULSANTI
   Anteprima   rapida occhiata al piano prima di acquisire
-  Telefono    invia la scansione al telefono o ricevi foto da esso
+  LocalSend   invia file a telefoni e computer o ricevili da loro
   Testo       testo riconosciuto (OCR), copia e traduci
   Apri ultimo / Apri cartella
 
@@ -390,7 +390,7 @@ Tutto è automatico di default:
   • OCR: inglese + greco + lingua di sistema; scaricate la prima volta.
   • Traduzione: Google Traduttore (gratis), MyMemory come riserva.
 
-TELEFONO (stessa Wi-Fi)
+LOCALSEND (stessa Wi-Fi): telefoni e computer (Windows, Mac, Linux)
   • I telefoni con l’app gratuita LocalSend compaiono da soli: scegli, Invia.
   • Niente LocalSend? Scansiona il codice QR: si apre una pagina per scaricare o inviare foto.
   • Dal telefono: in LocalSend scegli «What the Scan · <questo PC>» o usa la pagina QR.
@@ -425,7 +425,7 @@ DRIVER
 
 BOTONES
   Vista previa   vistazo rápido al cristal antes de escanear
-  Móvil          envía el escaneo al móvil o recibe fotos de él
+  LocalSend      envía archivos a móviles y ordenadores o recíbelos de ellos
   Texto          texto reconocido (OCR), copiar y traducir
   Abrir último / Abrir carpeta
 
@@ -437,7 +437,7 @@ Todo es automático por defecto:
   • OCR: inglés + griego + idioma del sistema; se descargan la primera vez.
   • Traducción: Google Traductor (gratis), MyMemory como respaldo.
 
-MÓVIL (misma Wi-Fi)
+LOCALSEND (misma Wi-Fi): móviles y ordenadores (Windows, Mac, Linux)
   • Los móviles con la app gratuita LocalSend aparecen solos: elige uno, Enviar.
   • ¿Sin LocalSend? Escanea el código QR: se abre una página para descargar o enviar fotos.
   • Desde el móvil: en LocalSend elige «What the Scan · <este PC>» o usa la página QR.
@@ -472,7 +472,7 @@ CONTROLADORES
 
 BUTOANE
   Previzualizare   privire rapidă pe geam înainte de scanare
-  Telefon          trimiteți scanarea pe telefon sau primiți fotografii de la el
+  LocalSend        trimiteți fișiere către telefoane și computere sau primiți de la ele
   Text             textul recunoscut (OCR), copiere și traducere
   Deschide ultimul / Deschide dosarul
 
@@ -484,7 +484,7 @@ Totul este automat implicit:
   • OCR: engleză + greacă + limba sistemului; se descarcă prima dată.
   • Traducere: Google Traducere (gratuit), MyMemory ca rezervă.
 
-TELEFON (aceeași rețea Wi-Fi)
+LOCALSEND (aceeași rețea Wi-Fi): telefoane și computere (Windows, Mac, Linux)
   • Telefoanele cu aplicația gratuită LocalSend apar singure: alegeți, Trimite.
   • Nu aveți LocalSend? Scanați codul QR: se deschide o pagină pentru descărcare sau trimitere poze.
   • De pe telefon: în LocalSend alegeți „What the Scan · <acest PC>” sau pagina QR.
@@ -519,7 +519,7 @@ DRIVERE
 
 TLAČÍTKA
   Náhled      rychlý pohled na sklo před skenováním
-  Telefon     poslat sken do telefonu nebo z něj přijmout fotky
+  LocalSend   posílat soubory do telefonů a počítačů nebo z nich přijímat
   Text        rozpoznaný text (OCR), kopírování a překlad
   Otevřít poslední / Otevřít složku
 
@@ -531,7 +531,7 @@ Vše je ve výchozím stavu automatické:
   • OCR: angličtina + řečtina + jazyk systému; stáhne se poprvé.
   • Překlad: Překladač Google (zdarma), záložně MyMemory.
 
-TELEFON (stejná Wi-Fi)
+LOCALSEND (stejná Wi-Fi): telefony a počítače (Windows, Mac, Linux)
   • Telefony s bezplatnou aplikací LocalSend se objeví samy: vyberte, Odeslat.
   • Nemáte LocalSend? Naskenujte QR kód: otevře se stránka pro stažení nebo odeslání fotek.
   • Z telefonu: v LocalSend vyberte „What the Scan · <tento PC>“ nebo stránku z QR.
@@ -566,7 +566,7 @@ OVLADAČE
 
 КНОПКИ
   Предпросмотр   быстрый взгляд на стекло перед сканированием
-  Телефон        отправить скан на телефон или получить с него фото
+  LocalSend      отправлять файлы на телефоны и компьютеры или получать с них
   Текст          распознанный текст (OCR), копирование и перевод
   Последний файл / Открыть папку
 
@@ -578,7 +578,7 @@ OVLADAČE
   • OCR: английский + греческий + язык системы; скачиваются при первом запуске.
   • Перевод: Google Переводчик (бесплатно), запасной вариант MyMemory.
 
-ТЕЛЕФОН (одна Wi-Fi)
+LOCALSEND (одна Wi-Fi): телефоны и компьютеры (Windows, Mac, Linux)
   • Телефоны с бесплатным приложением LocalSend появляются сами: выберите, «Отправить».
   • Нет LocalSend? Отсканируйте QR-код: откроется страница для скачивания или отправки фото.
   • С телефона: в LocalSend выберите «What the Scan · <этот ПК>» или страницу QR.
@@ -613,7 +613,7 @@ OVLADAČE
 
 ボタン
   プレビュー   スキャン前に原稿台をすばやく確認
-  スマホ       スキャンをスマートフォンに送る／スマートフォンから写真を受け取る
+  LocalSend   スマートフォンやコンピューターとファイルを送受信
   テキスト     認識したテキスト (OCR)、コピーと翻訳
   最後のファイル / フォルダーを開く
 
@@ -625,7 +625,7 @@ OVLADAČE
   • OCR: 英語 + ギリシャ語 + システムの言語。初回に自動ダウンロード。
   • 翻訳: Google 翻訳（無料）、予備に MyMemory。
 
-スマートフォン（同じ Wi-Fi）
+LOCALSEND（同じ Wi-Fi）: スマートフォンとコンピューター（Windows、Mac、Linux）
   • 無料アプリ LocalSend のあるスマートフォンは自動で表示されます。選んで「送信」。
   • LocalSend がない場合: QR コードを読み取ると、ダウンロード／写真送信用のページが開きます。
   • スマートフォンから: LocalSend で「What the Scan · <この PC>」を選ぶか、QR ページを使います。
@@ -660,7 +660,7 @@ OVLADAČE
 
 按钮
   预览         扫描前快速查看平板
-  手机         把扫描件发送到手机，或从手机接收照片
+  LocalSend    向手机和电脑发送文件，或从中接收
   文字         识别的文字 (OCR)，复制和翻译
   打开最近 / 打开文件夹
 
@@ -672,7 +672,7 @@ OVLADAČE
   • OCR：英语 + 希腊语 + 系统语言；首次使用时自动下载。
   • 翻译：Google 翻译（免费），备用 MyMemory。
 
-手机（同一 Wi-Fi）
+LOCALSEND（同一 Wi-Fi）：手机和电脑（Windows、Mac、Linux）
   • 装有免费应用 LocalSend 的手机会自动出现：选择后点“发送”。
   • 没有 LocalSend？扫描二维码，会打开一个用于下载或发送照片的页面。
   • 从手机发送：在 LocalSend 中选择“What the Scan · <这台电脑>”，或使用二维码页面。
@@ -2211,6 +2211,10 @@ def draw_icon(name, color, size=24):
         p.drawLine(QPointF(12, 3.5), QPointF(12, 14.5))
         p.drawPolyline([QPointF(7.5, 10.5), QPointF(12, 15), QPointF(16.5, 10.5)])
         p.drawPolyline([QPointF(3.5, 15.5), QPointF(3.5, 20.5), QPointF(20.5, 20.5), QPointF(20.5, 15.5)])
+    elif name == "computer":
+        p.drawRoundedRect(QRectF(3, 4.5, 18, 12), 1.8, 1.8)
+        p.drawLine(QPointF(9, 20.5), QPointF(15, 20.5))
+        p.drawLine(QPointF(12, 16.5), QPointF(12, 20.5))
     elif name == "phone":
         p.drawRoundedRect(QRectF(6.5, 2.5, 11, 19), 2.4, 2.4)
         p.drawLine(QPointF(10.5, 18.2), QPointF(13.5, 18.2))
@@ -2346,6 +2350,16 @@ def apply_theme(mode):
 UI_LANG = "en"
 
 GR = {
+    "Send with LocalSend":
+        "Αποστολή με LocalSend",
+    "Phones and computers (Windows, Mac, Linux) on the same Wi-Fi or network. You can also drag files here.":
+        "Κινητά και υπολογιστές (Windows, Mac, Linux) στο ίδιο Wi-Fi ή δίκτυο. Μπορείς και να σύρεις αρχεία εδώ.",
+    "Send files to phones and computers, or receive from them, on the same Wi-Fi (LocalSend, QR code)":
+        "Στείλε αρχεία σε κινητά και υπολογιστές ή πάρε από αυτά, στο ίδιο Wi-Fi (LocalSend, QR code)",
+    "Devices with LocalSend":
+        "Συσκευές με LocalSend",
+    "macOS may now ask whether {app} can find devices on your local network.\n\nClick Allow, so phones and computers can see this Mac. If you clicked Don't Allow before: System Settings › Privacy & Security › Local Network › turn on {app}.":
+        "Το macOS μπορεί τώρα να ρωτήσει αν το {app} μπορεί να βρίσκει συσκευές στο τοπικό δίκτυο.\n\nΠάτα «Να επιτρέπεται», για να βλέπουν κινητά και υπολογιστές αυτό το Mac. Αν είχες πατήσει «Να μην επιτρέπεται»: Ρυθμίσεις συστήματος › Απόρρητο και ασφάλεια › Τοπικό δίκτυο › άνοιξε το {app}.",
     "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
         "Ανοίγει η σελίδα λήψεων της Brother. Το μοντέλο {model} αντιγράφηκε: επικόλλησέ το στην αναζήτηση (Ctrl+V). Τα περισσότερα μοντέλα Brother σαρώνουν και χωρίς driver μέσω δικτύου.",
     "Connect Epson Scan 2 to the scanner":
@@ -2395,8 +2409,8 @@ GR = {
         "Λήψη από κινητό",
     "Keep receiving on while the app is open":
         "Λήψη πάντα ανοιχτή όσο τρέχει η εφαρμογή",
-    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
-        "Όταν είναι ανενεργό, η λήψη ανοίγει για {minutes} λεπτά κάθε φορά που πατάς «Κινητό».",
+    "When this is off, receiving opens for {minutes} minutes each time you press LocalSend.":
+        "Όταν είναι ανενεργό, η λήψη ανοίγει για {minutes} λεπτά κάθε φορά που πατάς «LocalSend».",
     "Phone photos":
         "Φωτογραφίες κινητού",
     "Just save them in the scans folder":
@@ -2407,8 +2421,8 @@ GR = {
         "Όνομα στο κινητό",
     "How it works":
         "Πώς δουλεύει",
-    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
-        "1. Κινητό και υπολογιστής στο ίδιο Wi-Fi.\n2. Εγκατέστησε τη δωρεάν εφαρμογή LocalSend στο κινητό ή απλά σκάναρε το QR code.\n3. Πάτα «Κινητό», δίπλα στην Προεπισκόπηση, διάλεξε το κινητό και «Αποστολή».\n4. Για αποστολή από το κινητό: στο LocalSend διάλεξε «{name}» ή χρησιμοποίησε τη σελίδα του QR.",
+    "1. Phone or computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press LocalSend, next to Preview, choose the phone or computer and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. Κινητό και υπολογιστής στο ίδιο Wi-Fi.\n2. Εγκατέστησε τη δωρεάν εφαρμογή LocalSend στο κινητό ή απλά σκάναρε το QR code.\n3. Πάτα «LocalSend», δίπλα στην Προεπισκόπηση, διάλεξε το κινητό και «Αποστολή».\n4. Για αποστολή από το κινητό: στο LocalSend διάλεξε «{name}» ή χρησιμοποίησε τη σελίδα του QR.",
     "Get LocalSend":
         "Κατέβασε το LocalSend",
     "Idle · making a PDF from phone photos":
@@ -2419,8 +2433,8 @@ GR = {
         "Τα Windows μπορεί τώρα να ρωτήσουν αν το {app} μπορεί να χρησιμοποιεί το δίκτυο.\n\nΤσέκαρε «Ιδιωτικά δίκτυα» και πάτα «Να επιτρέπεται», ώστε το κινητό να βλέπει τον υπολογιστή.",
     "The phone connection could not start. Another program may be using the network ports {ports}.":
         "Η σύνδεση με το κινητό δεν ξεκίνησε. Κάποιο άλλο πρόγραμμα μπορεί να χρησιμοποιεί τις θύρες δικτύου {ports}.",
-    "Receiving is off. Press Phone to open it again.":
-        "Η λήψη είναι κλειστή. Πάτα «Κινητό» για να ανοίξει ξανά.",
+    "Receiving is off. Press LocalSend to open it again.":
+        "Η λήψη είναι κλειστή. Πάτα «LocalSend» για να ανοίξει ξανά.",
     "Receiving is on: the phone can send files to “{name}”.":
         "Η λήψη είναι ανοιχτή: το κινητό μπορεί να στείλει αρχεία στο «{name}».",
     "Receiving is on for {time}: the phone can send files to “{name}”.":
@@ -2735,6 +2749,16 @@ LANG_NAMES = {  # code: (English, Greek, tesseract code)
 
 # Other interface languages (keys are the English texts, like GR above).
 UI_FR = {
+    "Send with LocalSend":
+        "Envoyer avec LocalSend",
+    "Phones and computers (Windows, Mac, Linux) on the same Wi-Fi or network. You can also drag files here.":
+        "Téléphones et ordinateurs (Windows, Mac, Linux) sur le même Wi-Fi ou réseau. Vous pouvez aussi glisser des fichiers ici.",
+    "Send files to phones and computers, or receive from them, on the same Wi-Fi (LocalSend, QR code)":
+        "Envoyer des fichiers vers des téléphones et ordinateurs, ou en recevoir, sur le même Wi-Fi (LocalSend, code QR)",
+    "Devices with LocalSend":
+        "Appareils avec LocalSend",
+    "macOS may now ask whether {app} can find devices on your local network.\n\nClick Allow, so phones and computers can see this Mac. If you clicked Don't Allow before: System Settings › Privacy & Security › Local Network › turn on {app}.":
+        "macOS va peut-être demander si {app} peut trouver des appareils sur votre réseau local.\n\nCliquez sur Autoriser, pour que téléphones et ordinateurs voient ce Mac. Si vous avez refusé : Réglages Système › Confidentialité et sécurité › Réseau local › activez {app}.",
     "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
         "La page de téléchargement de Brother s’ouvre. Le modèle {model} est copié : collez-le dans la recherche (Ctrl+V). La plupart des modèles Brother numérisent aussi sans pilote en réseau.",
     "Connect Epson Scan 2 to the scanner":
@@ -2784,8 +2808,8 @@ UI_FR = {
         "Réception depuis le téléphone",
     "Keep receiving on while the app is open":
         "Garder la réception active tant que l’application est ouverte",
-    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
-        "Si cette option est désactivée, la réception s’ouvre pour {minutes} minutes à chaque appui sur Téléphone.",
+    "When this is off, receiving opens for {minutes} minutes each time you press LocalSend.":
+        "Si cette option est désactivée, la réception s’ouvre pour {minutes} minutes à chaque appui sur LocalSend.",
     "Phone photos":
         "Photos du téléphone",
     "Just save them in the scans folder":
@@ -2796,8 +2820,8 @@ UI_FR = {
         "Nom sur le téléphone",
     "How it works":
         "Fonctionnement",
-    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
-        "1. Téléphone et ordinateur sur le même Wi-Fi.\n2. Installez l’application gratuite LocalSend sur le téléphone, ou scannez simplement le code QR.\n3. Appuyez sur Téléphone, à côté d’Aperçu, choisissez le téléphone puis Envoyer.\n4. Pour envoyer depuis le téléphone : dans LocalSend, choisissez « {name} », ou utilisez la page du code QR.",
+    "1. Phone or computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press LocalSend, next to Preview, choose the phone or computer and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. Téléphone et ordinateur sur le même Wi-Fi.\n2. Installez l’application gratuite LocalSend sur le téléphone, ou scannez simplement le code QR.\n3. Appuyez sur LocalSend, à côté d’Aperçu, choisissez le téléphone puis Envoyer.\n4. Pour envoyer depuis le téléphone : dans LocalSend, choisissez « {name} », ou utilisez la page du code QR.",
     "Get LocalSend":
         "Obtenir LocalSend",
     "Idle · making a PDF from phone photos":
@@ -2808,8 +2832,8 @@ UI_FR = {
         "Windows va peut-être demander si {app} peut utiliser le réseau.\n\nCochez « Réseaux privés » et cliquez sur Autoriser, pour que votre téléphone puisse joindre cet ordinateur.",
     "The phone connection could not start. Another program may be using the network ports {ports}.":
         "La connexion au téléphone n’a pas pu démarrer. Un autre programme utilise peut-être les ports réseau {ports}.",
-    "Receiving is off. Press Phone to open it again.":
-        "La réception est désactivée. Appuyez sur Téléphone pour la rouvrir.",
+    "Receiving is off. Press LocalSend to open it again.":
+        "La réception est désactivée. Appuyez sur LocalSend pour la rouvrir.",
     "Receiving is on: the phone can send files to “{name}”.":
         "La réception est active : le téléphone peut envoyer des fichiers à « {name} ».",
     "Receiving is on for {time}: the phone can send files to “{name}”.":
@@ -3363,6 +3387,16 @@ UI_FR = {
 }
 
 UI_DE = {
+    "Send with LocalSend":
+        "Mit LocalSend senden",
+    "Phones and computers (Windows, Mac, Linux) on the same Wi-Fi or network. You can also drag files here.":
+        "Handys und Computer (Windows, Mac, Linux) im selben WLAN oder Netzwerk. Sie können Dateien auch hierher ziehen.",
+    "Send files to phones and computers, or receive from them, on the same Wi-Fi (LocalSend, QR code)":
+        "Dateien an Handys und Computer senden oder von ihnen empfangen, im selben WLAN (LocalSend, QR-Code)",
+    "Devices with LocalSend":
+        "Geräte mit LocalSend",
+    "macOS may now ask whether {app} can find devices on your local network.\n\nClick Allow, so phones and computers can see this Mac. If you clicked Don't Allow before: System Settings › Privacy & Security › Local Network › turn on {app}.":
+        "macOS fragt eventuell, ob {app} Geräte in Ihrem lokalen Netzwerk finden darf.\n\nKlicken Sie auf Erlauben, damit Handys und Computer diesen Mac sehen. Falls Sie abgelehnt haben: Systemeinstellungen › Datenschutz & Sicherheit › Lokales Netzwerk › {app} einschalten.",
     "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
         "Die Download-Seite von Brother öffnet sich. Das Modell {model} ist kopiert: Fügen Sie es in die Suche ein (Strg+V). Die meisten Brother-Modelle scannen auch ohne Treiber über das Netzwerk.",
     "Connect Epson Scan 2 to the scanner":
@@ -3412,8 +3446,8 @@ UI_DE = {
         "Empfang vom Handy",
     "Keep receiving on while the app is open":
         "Empfang eingeschaltet lassen, solange die App geöffnet ist",
-    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
-        "Ist dies aus, wird der Empfang bei jedem Druck auf Handy für {minutes} Minuten geöffnet.",
+    "When this is off, receiving opens for {minutes} minutes each time you press LocalSend.":
+        "Ist dies aus, wird der Empfang bei jedem Druck auf LocalSend für {minutes} Minuten geöffnet.",
     "Phone photos":
         "Handyfotos",
     "Just save them in the scans folder":
@@ -3424,8 +3458,8 @@ UI_DE = {
         "Name auf dem Handy",
     "How it works":
         "So funktioniert es",
-    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
-        "1. Handy und Computer im selben WLAN.\n2. Installieren Sie die kostenlose LocalSend-App auf dem Handy oder scannen Sie einfach den QR-Code.\n3. Drücken Sie Handy neben Vorschau, wählen Sie das Handy und Senden.\n4. Senden vom Handy: Wählen Sie in LocalSend „{name}“ oder nutzen Sie die QR-Seite.",
+    "1. Phone or computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press LocalSend, next to Preview, choose the phone or computer and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. Handy und Computer im selben WLAN.\n2. Installieren Sie die kostenlose LocalSend-App auf dem Handy oder scannen Sie einfach den QR-Code.\n3. Drücken Sie LocalSend neben Vorschau, wählen Sie das Handy und Senden.\n4. Senden vom Handy: Wählen Sie in LocalSend „{name}“ oder nutzen Sie die QR-Seite.",
     "Get LocalSend":
         "LocalSend holen",
     "Idle · making a PDF from phone photos":
@@ -3436,8 +3470,8 @@ UI_DE = {
         "Windows fragt jetzt eventuell, ob {app} das Netzwerk nutzen darf.\n\nAktivieren Sie „Private Netzwerke“ und klicken Sie auf Zulassen, damit Ihr Handy diesen Computer erreicht.",
     "The phone connection could not start. Another program may be using the network ports {ports}.":
         "Die Handyverbindung konnte nicht starten. Eventuell nutzt ein anderes Programm die Netzwerkports {ports}.",
-    "Receiving is off. Press Phone to open it again.":
-        "Der Empfang ist aus. Drücken Sie Handy, um ihn wieder zu öffnen.",
+    "Receiving is off. Press LocalSend to open it again.":
+        "Der Empfang ist aus. Drücken Sie LocalSend, um ihn wieder zu öffnen.",
     "Receiving is on: the phone can send files to “{name}”.":
         "Der Empfang ist an: Das Handy kann Dateien an „{name}“ senden.",
     "Receiving is on for {time}: the phone can send files to “{name}”.":
@@ -3991,6 +4025,16 @@ UI_DE = {
 }
 
 UI_IT = {
+    "Send with LocalSend":
+        "Invia con LocalSend",
+    "Phones and computers (Windows, Mac, Linux) on the same Wi-Fi or network. You can also drag files here.":
+        "Telefoni e computer (Windows, Mac, Linux) sulla stessa Wi-Fi o rete. Puoi anche trascinare qui i file.",
+    "Send files to phones and computers, or receive from them, on the same Wi-Fi (LocalSend, QR code)":
+        "Invia file a telefoni e computer, o ricevili da loro, sulla stessa Wi-Fi (LocalSend, codice QR)",
+    "Devices with LocalSend":
+        "Dispositivi con LocalSend",
+    "macOS may now ask whether {app} can find devices on your local network.\n\nClick Allow, so phones and computers can see this Mac. If you clicked Don't Allow before: System Settings › Privacy & Security › Local Network › turn on {app}.":
+        "macOS potrebbe chiedere se {app} può trovare dispositivi nella rete locale.\n\nFai clic su Consenti, così telefoni e computer vedono questo Mac. Se hai rifiutato: Impostazioni di Sistema › Privacy e sicurezza › Rete locale › attiva {app}.",
     "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
         "Si apre la pagina di download di Brother. Il modello {model} è copiato: incollalo nella ricerca (Ctrl+V). La maggior parte dei modelli Brother acquisisce anche senza driver in rete.",
     "Connect Epson Scan 2 to the scanner":
@@ -4040,8 +4084,8 @@ UI_IT = {
         "Ricezione dal telefono",
     "Keep receiving on while the app is open":
         "Mantieni attiva la ricezione finché l’app è aperta",
-    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
-        "Se disattivato, la ricezione si apre per {minutes} minuti ogni volta che premi Telefono.",
+    "When this is off, receiving opens for {minutes} minutes each time you press LocalSend.":
+        "Se disattivato, la ricezione si apre per {minutes} minuti ogni volta che premi LocalSend.",
     "Phone photos":
         "Foto dal telefono",
     "Just save them in the scans folder":
@@ -4052,8 +4096,8 @@ UI_IT = {
         "Nome sul telefono",
     "How it works":
         "Come funziona",
-    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
-        "1. Telefono e computer sulla stessa rete Wi-Fi.\n2. Installa l’app gratuita LocalSend sul telefono, oppure scansiona semplicemente il codice QR.\n3. Premi Telefono, accanto ad Anteprima, scegli il telefono e Invia.\n4. Per inviare dal telefono: in LocalSend scegli «{name}», oppure usa la pagina del codice QR.",
+    "1. Phone or computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press LocalSend, next to Preview, choose the phone or computer and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. Telefono e computer sulla stessa rete Wi-Fi.\n2. Installa l’app gratuita LocalSend sul telefono, oppure scansiona semplicemente il codice QR.\n3. Premi LocalSend, accanto ad Anteprima, scegli il telefono e Invia.\n4. Per inviare dal telefono: in LocalSend scegli «{name}», oppure usa la pagina del codice QR.",
     "Get LocalSend":
         "Scarica LocalSend",
     "Idle · making a PDF from phone photos":
@@ -4064,8 +4108,8 @@ UI_IT = {
         "Windows potrebbe ora chiedere se {app} può usare la rete.\n\nSpunta «Reti private» e fai clic su Consenti, così il telefono può raggiungere questo computer.",
     "The phone connection could not start. Another program may be using the network ports {ports}.":
         "Impossibile avviare la connessione con il telefono. Un altro programma potrebbe usare le porte di rete {ports}.",
-    "Receiving is off. Press Phone to open it again.":
-        "La ricezione è disattivata. Premi Telefono per riaprirla.",
+    "Receiving is off. Press LocalSend to open it again.":
+        "La ricezione è disattivata. Premi LocalSend per riaprirla.",
     "Receiving is on: the phone can send files to “{name}”.":
         "La ricezione è attiva: il telefono può inviare file a «{name}».",
     "Receiving is on for {time}: the phone can send files to “{name}”.":
@@ -4619,6 +4663,16 @@ UI_IT = {
 }
 
 UI_ES = {
+    "Send with LocalSend":
+        "Enviar con LocalSend",
+    "Phones and computers (Windows, Mac, Linux) on the same Wi-Fi or network. You can also drag files here.":
+        "Móviles y ordenadores (Windows, Mac, Linux) en la misma Wi-Fi o red. También puedes arrastrar archivos aquí.",
+    "Send files to phones and computers, or receive from them, on the same Wi-Fi (LocalSend, QR code)":
+        "Envía archivos a móviles y ordenadores, o recíbelos de ellos, en la misma Wi-Fi (LocalSend, código QR)",
+    "Devices with LocalSend":
+        "Dispositivos con LocalSend",
+    "macOS may now ask whether {app} can find devices on your local network.\n\nClick Allow, so phones and computers can see this Mac. If you clicked Don't Allow before: System Settings › Privacy & Security › Local Network › turn on {app}.":
+        "Puede que macOS pregunte si {app} puede buscar dispositivos en tu red local.\n\nHaz clic en Permitir, para que móviles y ordenadores vean este Mac. Si lo rechazaste: Ajustes del Sistema › Privacidad y seguridad › Red local › activa {app}.",
     "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
         "Se abre la página de descargas de Brother. El modelo {model} está copiado: pégalo en la búsqueda (Ctrl+V). La mayoría de modelos Brother también escanean sin controlador por la red.",
     "Connect Epson Scan 2 to the scanner":
@@ -4668,8 +4722,8 @@ UI_ES = {
         "Recepción desde el móvil",
     "Keep receiving on while the app is open":
         "Mantener la recepción activa mientras la app esté abierta",
-    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
-        "Si está desactivado, la recepción se abre durante {minutes} minutos cada vez que pulsas Móvil.",
+    "When this is off, receiving opens for {minutes} minutes each time you press LocalSend.":
+        "Si está desactivado, la recepción se abre durante {minutes} minutos cada vez que pulsas LocalSend.",
     "Phone photos":
         "Fotos del móvil",
     "Just save them in the scans folder":
@@ -4680,8 +4734,8 @@ UI_ES = {
         "Nombre en el móvil",
     "How it works":
         "Cómo funciona",
-    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
-        "1. Móvil y ordenador en la misma Wi-Fi.\n2. Instala la app gratuita LocalSend en el móvil, o simplemente escanea el código QR.\n3. Pulsa Móvil, junto a Vista previa, elige el móvil y Enviar.\n4. Para enviar desde el móvil: en LocalSend elige «{name}», o usa la página del código QR.",
+    "1. Phone or computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press LocalSend, next to Preview, choose the phone or computer and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. Móvil y ordenador en la misma Wi-Fi.\n2. Instala la app gratuita LocalSend en el móvil, o simplemente escanea el código QR.\n3. Pulsa LocalSend, junto a Vista previa, elige el móvil y Enviar.\n4. Para enviar desde el móvil: en LocalSend elige «{name}», o usa la página del código QR.",
     "Get LocalSend":
         "Obtener LocalSend",
     "Idle · making a PDF from phone photos":
@@ -4692,8 +4746,8 @@ UI_ES = {
         "Puede que Windows pregunte ahora si {app} puede usar la red.\n\nMarca «Redes privadas» y haz clic en Permitir, para que tu móvil pueda llegar a este ordenador.",
     "The phone connection could not start. Another program may be using the network ports {ports}.":
         "No se pudo iniciar la conexión con el móvil. Puede que otro programa esté usando los puertos de red {ports}.",
-    "Receiving is off. Press Phone to open it again.":
-        "La recepción está desactivada. Pulsa Móvil para abrirla de nuevo.",
+    "Receiving is off. Press LocalSend to open it again.":
+        "La recepción está desactivada. Pulsa LocalSend para abrirla de nuevo.",
     "Receiving is on: the phone can send files to “{name}”.":
         "La recepción está activa: el móvil puede enviar archivos a «{name}».",
     "Receiving is on for {time}: the phone can send files to “{name}”.":
@@ -5247,6 +5301,16 @@ UI_ES = {
 }
 
 UI_RO = {
+    "Send with LocalSend":
+        "Trimiteți cu LocalSend",
+    "Phones and computers (Windows, Mac, Linux) on the same Wi-Fi or network. You can also drag files here.":
+        "Telefoane și computere (Windows, Mac, Linux) în aceeași rețea Wi-Fi sau rețea. Puteți și trage fișiere aici.",
+    "Send files to phones and computers, or receive from them, on the same Wi-Fi (LocalSend, QR code)":
+        "Trimiteți fișiere către telefoane și computere sau primiți de la ele, în aceeași rețea Wi-Fi (LocalSend, cod QR)",
+    "Devices with LocalSend":
+        "Dispozitive cu LocalSend",
+    "macOS may now ask whether {app} can find devices on your local network.\n\nClick Allow, so phones and computers can see this Mac. If you clicked Don't Allow before: System Settings › Privacy & Security › Local Network › turn on {app}.":
+        "macOS poate întreba dacă {app} poate găsi dispozitive în rețeaua locală.\n\nFaceți clic pe Permite, ca telefoanele și computerele să vadă acest Mac. Dacă ați refuzat: Configurări sistem › Confidențialitate și securitate › Rețea locală › activați {app}.",
     "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
         "Se deschide pagina de descărcări Brother. Modelul {model} este copiat: lipiți-l în căutare (Ctrl+V). Majoritatea modelelor Brother scanează și fără driver prin rețea.",
     "Connect Epson Scan 2 to the scanner":
@@ -5296,8 +5360,8 @@ UI_RO = {
         "Primire de la telefon",
     "Keep receiving on while the app is open":
         "Primirea rămâne activă cât timp aplicația este deschisă",
-    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
-        "Când este dezactivat, primirea se deschide pentru {minutes} minute de fiecare dată când apăsați Telefon.",
+    "When this is off, receiving opens for {minutes} minutes each time you press LocalSend.":
+        "Când este dezactivat, primirea se deschide pentru {minutes} minute de fiecare dată când apăsați LocalSend.",
     "Phone photos":
         "Fotografii de pe telefon",
     "Just save them in the scans folder":
@@ -5308,8 +5372,8 @@ UI_RO = {
         "Nume pe telefon",
     "How it works":
         "Cum funcționează",
-    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
-        "1. Telefonul și computerul în aceeași rețea Wi-Fi.\n2. Instalați aplicația gratuită LocalSend pe telefon sau scanați pur și simplu codul QR.\n3. Apăsați Telefon, lângă Previzualizare, alegeți telefonul și Trimite.\n4. Pentru a trimite de pe telefon: în LocalSend alegeți „{name}” sau folosiți pagina codului QR.",
+    "1. Phone or computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press LocalSend, next to Preview, choose the phone or computer and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. Telefonul și computerul în aceeași rețea Wi-Fi.\n2. Instalați aplicația gratuită LocalSend pe telefon sau scanați pur și simplu codul QR.\n3. Apăsați LocalSend, lângă Previzualizare, alegeți telefonul și Trimite.\n4. Pentru a trimite de pe telefon: în LocalSend alegeți „{name}” sau folosiți pagina codului QR.",
     "Get LocalSend":
         "Obțineți LocalSend",
     "Idle · making a PDF from phone photos":
@@ -5320,8 +5384,8 @@ UI_RO = {
         "Windows poate întreba acum dacă {app} poate folosi rețeaua.\n\nBifați „Rețele private” și faceți clic pe Permiteți, ca telefonul să poată ajunge la acest computer.",
     "The phone connection could not start. Another program may be using the network ports {ports}.":
         "Conexiunea cu telefonul nu a putut porni. Poate alt program folosește porturile de rețea {ports}.",
-    "Receiving is off. Press Phone to open it again.":
-        "Primirea este oprită. Apăsați Telefon pentru a o redeschide.",
+    "Receiving is off. Press LocalSend to open it again.":
+        "Primirea este oprită. Apăsați LocalSend pentru a o redeschide.",
     "Receiving is on: the phone can send files to “{name}”.":
         "Primirea este activă: telefonul poate trimite fișiere către „{name}”.",
     "Receiving is on for {time}: the phone can send files to “{name}”.":
@@ -5875,6 +5939,16 @@ UI_RO = {
 }
 
 UI_CS = {
+    "Send with LocalSend":
+        "Odeslat přes LocalSend",
+    "Phones and computers (Windows, Mac, Linux) on the same Wi-Fi or network. You can also drag files here.":
+        "Telefony a počítače (Windows, Mac, Linux) ve stejné Wi-Fi nebo síti. Soubory sem můžete i přetáhnout.",
+    "Send files to phones and computers, or receive from them, on the same Wi-Fi (LocalSend, QR code)":
+        "Posílejte soubory do telefonů a počítačů nebo je z nich přijímejte, ve stejné Wi-Fi (LocalSend, QR kód)",
+    "Devices with LocalSend":
+        "Zařízení s LocalSend",
+    "macOS may now ask whether {app} can find devices on your local network.\n\nClick Allow, so phones and computers can see this Mac. If you clicked Don't Allow before: System Settings › Privacy & Security › Local Network › turn on {app}.":
+        "macOS se možná zeptá, zda smí {app} hledat zařízení v místní síti.\n\nKlikněte na Povolit, aby telefony a počítače viděly tento Mac. Pokud jste odmítli: Nastavení systému › Soukromí a zabezpečení › Místní síť › zapněte {app}.",
     "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
         "Otevírá se stránka ke stažení Brother. Model {model} je zkopírovaný: vložte ho do hledání (Ctrl+V). Většina modelů Brother skenuje i bez ovladače po síti.",
     "Connect Epson Scan 2 to the scanner":
@@ -5924,8 +5998,8 @@ UI_CS = {
         "Příjem z telefonu",
     "Keep receiving on while the app is open":
         "Nechat příjem zapnutý, dokud je aplikace otevřená",
-    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
-        "Když je vypnuto, příjem se otevře na {minutes} minut při každém stisku Telefon.",
+    "When this is off, receiving opens for {minutes} minutes each time you press LocalSend.":
+        "Když je vypnuto, příjem se otevře na {minutes} minut při každém stisku LocalSend.",
     "Phone photos":
         "Fotky z telefonu",
     "Just save them in the scans folder":
@@ -5936,8 +6010,8 @@ UI_CS = {
         "Název v telefonu",
     "How it works":
         "Jak to funguje",
-    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
-        "1. Telefon a počítač ve stejné Wi-Fi.\n2. Nainstalujte do telefonu bezplatnou aplikaci LocalSend, nebo jen naskenujte QR kód.\n3. Stiskněte Telefon vedle Náhledu, vyberte telefon a Odeslat.\n4. Odeslání z telefonu: v LocalSend vyberte „{name}“, nebo použijte stránku z QR kódu.",
+    "1. Phone or computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press LocalSend, next to Preview, choose the phone or computer and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. Telefon a počítač ve stejné Wi-Fi.\n2. Nainstalujte do telefonu bezplatnou aplikaci LocalSend, nebo jen naskenujte QR kód.\n3. Stiskněte LocalSend vedle Náhledu, vyberte telefon a Odeslat.\n4. Odeslání z telefonu: v LocalSend vyberte „{name}“, nebo použijte stránku z QR kódu.",
     "Get LocalSend":
         "Získat LocalSend",
     "Idle · making a PDF from phone photos":
@@ -5948,8 +6022,8 @@ UI_CS = {
         "Windows se teď možná zeptá, zda smí {app} používat síť.\n\nZaškrtněte „Soukromé sítě“ a klikněte na Povolit, aby se telefon dostal k tomuto počítači.",
     "The phone connection could not start. Another program may be using the network ports {ports}.":
         "Spojení s telefonem se nepodařilo spustit. Síťové porty {ports} možná používá jiný program.",
-    "Receiving is off. Press Phone to open it again.":
-        "Příjem je vypnutý. Stiskněte Telefon pro jeho opětovné otevření.",
+    "Receiving is off. Press LocalSend to open it again.":
+        "Příjem je vypnutý. Stiskněte LocalSend pro jeho opětovné otevření.",
     "Receiving is on: the phone can send files to “{name}”.":
         "Příjem je zapnutý: telefon může posílat soubory do „{name}“.",
     "Receiving is on for {time}: the phone can send files to “{name}”.":
@@ -6503,6 +6577,16 @@ UI_CS = {
 }
 
 UI_RU = {
+    "Send with LocalSend":
+        "Отправить через LocalSend",
+    "Phones and computers (Windows, Mac, Linux) on the same Wi-Fi or network. You can also drag files here.":
+        "Телефоны и компьютеры (Windows, Mac, Linux) в одной Wi-Fi или сети. Файлы можно и перетащить сюда.",
+    "Send files to phones and computers, or receive from them, on the same Wi-Fi (LocalSend, QR code)":
+        "Отправляйте файлы на телефоны и компьютеры или получайте с них в той же Wi-Fi (LocalSend, QR-код)",
+    "Devices with LocalSend":
+        "Устройства с LocalSend",
+    "macOS may now ask whether {app} can find devices on your local network.\n\nClick Allow, so phones and computers can see this Mac. If you clicked Don't Allow before: System Settings › Privacy & Security › Local Network › turn on {app}.":
+        "macOS может спросить, разрешить ли {app} искать устройства в локальной сети.\n\nНажмите «Разрешить», чтобы телефоны и компьютеры видели этот Mac. Если вы отказали: Системные настройки › Конфиденциальность и безопасность › Локальная сеть › включите {app}.",
     "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
         "Открывается страница загрузок Brother. Модель {model} скопирована: вставьте её в поиск (Ctrl+V). Большинство моделей Brother сканируют и без драйвера по сети.",
     "Connect Epson Scan 2 to the scanner":
@@ -6552,8 +6636,8 @@ UI_RU = {
         "Приём с телефона",
     "Keep receiving on while the app is open":
         "Держать приём включённым, пока приложение открыто",
-    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
-        "Если выключено, приём открывается на {minutes} мин. при каждом нажатии «Телефон».",
+    "When this is off, receiving opens for {minutes} minutes each time you press LocalSend.":
+        "Если выключено, приём открывается на {minutes} мин. при каждом нажатии «LocalSend».",
     "Phone photos":
         "Фото с телефона",
     "Just save them in the scans folder":
@@ -6564,8 +6648,8 @@ UI_RU = {
         "Имя на телефоне",
     "How it works":
         "Как это работает",
-    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
-        "1. Телефон и компьютер в одной Wi-Fi.\n2. Установите на телефон бесплатное приложение LocalSend или просто отсканируйте QR-код.\n3. Нажмите «Телефон» рядом с «Предпросмотром», выберите телефон и «Отправить».\n4. Отправка с телефона: в LocalSend выберите «{name}» или используйте страницу QR-кода.",
+    "1. Phone or computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press LocalSend, next to Preview, choose the phone or computer and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. Телефон и компьютер в одной Wi-Fi.\n2. Установите на телефон бесплатное приложение LocalSend или просто отсканируйте QR-код.\n3. Нажмите «LocalSend» рядом с «Предпросмотром», выберите телефон и «Отправить».\n4. Отправка с телефона: в LocalSend выберите «{name}» или используйте страницу QR-кода.",
     "Get LocalSend":
         "Скачать LocalSend",
     "Idle · making a PDF from phone photos":
@@ -6576,8 +6660,8 @@ UI_RU = {
         "Windows может спросить, можно ли {app} использовать сеть.\n\nОтметьте «Частные сети» и нажмите «Разрешить», чтобы телефон мог подключиться к этому компьютеру.",
     "The phone connection could not start. Another program may be using the network ports {ports}.":
         "Не удалось запустить связь с телефоном. Возможно, сетевые порты {ports} заняты другой программой.",
-    "Receiving is off. Press Phone to open it again.":
-        "Приём выключен. Нажмите «Телефон», чтобы открыть его снова.",
+    "Receiving is off. Press LocalSend to open it again.":
+        "Приём выключен. Нажмите «LocalSend», чтобы открыть его снова.",
     "Receiving is on: the phone can send files to “{name}”.":
         "Приём включён: телефон может отправлять файлы на «{name}».",
     "Receiving is on for {time}: the phone can send files to “{name}”.":
@@ -7131,6 +7215,16 @@ UI_RU = {
 }
 
 UI_JA = {
+    "Send with LocalSend":
+        "LocalSend で送信",
+    "Phones and computers (Windows, Mac, Linux) on the same Wi-Fi or network. You can also drag files here.":
+        "同じ Wi-Fi またはネットワーク上のスマートフォンとコンピューター（Windows、Mac、Linux）。ここにファイルをドラッグすることもできます。",
+    "Send files to phones and computers, or receive from them, on the same Wi-Fi (LocalSend, QR code)":
+        "同じ Wi-Fi でスマートフォンやコンピューターにファイルを送信・受信（LocalSend、QR コード）",
+    "Devices with LocalSend":
+        "LocalSend のあるデバイス",
+    "macOS may now ask whether {app} can find devices on your local network.\n\nClick Allow, so phones and computers can see this Mac. If you clicked Don't Allow before: System Settings › Privacy & Security › Local Network › turn on {app}.":
+        "{app} がローカルネットワーク上のデバイスを探すことを許可するか、macOS が確認する場合があります。\n\n「許可」をクリックすると、スマートフォンやコンピューターからこの Mac が見えます。拒否した場合: システム設定 › プライバシーとセキュリティ › ローカルネットワーク › {app} をオンにします。",
     "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
         "Brother のダウンロードページを開きます。モデル {model} はコピー済みです。検索欄に貼り付けてください (Ctrl+V)。ほとんどの Brother モデルはドライバーなしでもネットワーク経由でスキャンできます。",
     "Connect Epson Scan 2 to the scanner":
@@ -7180,8 +7274,8 @@ UI_JA = {
         "スマートフォンからの受信",
     "Keep receiving on while the app is open":
         "アプリを開いている間は常に受信をオンにする",
-    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
-        "オフの場合、「スマホ」を押すたびに {minutes} 分間だけ受信が開きます。",
+    "When this is off, receiving opens for {minutes} minutes each time you press LocalSend.":
+        "オフの場合、「LocalSend」を押すたびに {minutes} 分間だけ受信が開きます。",
     "Phone photos":
         "スマートフォンの写真",
     "Just save them in the scans folder":
@@ -7192,8 +7286,8 @@ UI_JA = {
         "スマートフォンに表示される名前",
     "How it works":
         "使い方",
-    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
-        "1. スマートフォンとコンピューターを同じ Wi-Fi に接続します。\n2. スマートフォンに無料の LocalSend アプリを入れるか、QR コードを読み取るだけです。\n3. 「プレビュー」の隣の「スマホ」を押し、スマートフォンを選んで「送信」。\n4. スマートフォンから送るには: LocalSend で「{name}」を選ぶか、QR コードのページを使います。",
+    "1. Phone or computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press LocalSend, next to Preview, choose the phone or computer and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. スマートフォンとコンピューターを同じ Wi-Fi に接続します。\n2. スマートフォンに無料の LocalSend アプリを入れるか、QR コードを読み取るだけです。\n3. 「プレビュー」の隣の「LocalSend」を押し、スマートフォンを選んで「送信」。\n4. スマートフォンから送るには: LocalSend で「{name}」を選ぶか、QR コードのページを使います。",
     "Get LocalSend":
         "LocalSend を入手",
     "Idle · making a PDF from phone photos":
@@ -7204,8 +7298,8 @@ UI_JA = {
         "{app} がネットワークを使用してよいか、Windows が確認する場合があります。\n\n「プライベート ネットワーク」にチェックを入れて「許可」をクリックすると、スマートフォンからこのコンピューターに接続できます。",
     "The phone connection could not start. Another program may be using the network ports {ports}.":
         "スマートフォンとの接続を開始できませんでした。別のプログラムがネットワークポート {ports} を使用している可能性があります。",
-    "Receiving is off. Press Phone to open it again.":
-        "受信はオフです。もう一度開くには「スマホ」を押してください。",
+    "Receiving is off. Press LocalSend to open it again.":
+        "受信はオフです。もう一度開くには「LocalSend」を押してください。",
     "Receiving is on: the phone can send files to “{name}”.":
         "受信中: スマートフォンから「{name}」にファイルを送れます。",
     "Receiving is on for {time}: the phone can send files to “{name}”.":
@@ -7759,6 +7853,16 @@ UI_JA = {
 }
 
 UI_ZH = {
+    "Send with LocalSend":
+        "通过 LocalSend 发送",
+    "Phones and computers (Windows, Mac, Linux) on the same Wi-Fi or network. You can also drag files here.":
+        "同一 Wi-Fi 或网络中的手机和电脑（Windows、Mac、Linux）。也可以把文件拖到这里。",
+    "Send files to phones and computers, or receive from them, on the same Wi-Fi (LocalSend, QR code)":
+        "在同一 Wi-Fi 下向手机和电脑发送文件或从中接收（LocalSend、二维码）",
+    "Devices with LocalSend":
+        "装有 LocalSend 的设备",
+    "macOS may now ask whether {app} can find devices on your local network.\n\nClick Allow, so phones and computers can see this Mac. If you clicked Don't Allow before: System Settings › Privacy & Security › Local Network › turn on {app}.":
+        "macOS 可能会询问是否允许 {app} 查找本地网络上的设备。\n\n点击“允许”，手机和电脑才能看到这台 Mac。如果之前点了“不允许”：系统设置 › 隐私与安全性 › 本地网络 › 打开 {app}。",
     "Brother's download page is opening. The model {model} is copied: paste it in the search box (Ctrl+V). Most Brother models also scan with no driver over the network.":
         "正在打开 Brother 下载页面。型号 {model} 已复制：请粘贴到搜索框 (Ctrl+V)。大多数 Brother 型号也可以无需驱动通过网络扫描。",
     "Connect Epson Scan 2 to the scanner":
@@ -7808,8 +7912,8 @@ UI_ZH = {
         "从手机接收",
     "Keep receiving on while the app is open":
         "应用打开期间始终开启接收",
-    "When this is off, receiving opens for {minutes} minutes each time you press Phone.":
-        "关闭时，每次按“手机”都会开启接收 {minutes} 分钟。",
+    "When this is off, receiving opens for {minutes} minutes each time you press LocalSend.":
+        "关闭时，每次按“LocalSend”都会开启接收 {minutes} 分钟。",
     "Phone photos":
         "手机照片",
     "Just save them in the scans folder":
@@ -7820,8 +7924,8 @@ UI_ZH = {
         "手机上显示的名称",
     "How it works":
         "使用方法",
-    "1. Phone and computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press Phone, next to Preview, choose the phone and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
-        "1. 手机和电脑连接同一 Wi-Fi。\n2. 在手机上安装免费的 LocalSend 应用，或直接扫描二维码。\n3. 按“预览”旁边的“手机”，选择手机后点“发送”。\n4. 从手机发送：在 LocalSend 中选择“{name}”，或使用二维码页面。",
+    "1. Phone or computer on the same Wi-Fi.\n2. Install the free LocalSend app on the phone, or simply scan the QR code.\n3. Press LocalSend, next to Preview, choose the phone or computer and Send.\n4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.":
+        "1. 手机和电脑连接同一 Wi-Fi。\n2. 在手机上安装免费的 LocalSend 应用，或直接扫描二维码。\n3. 按“预览”旁边的“LocalSend”，选择手机后点“发送”。\n4. 从手机发送：在 LocalSend 中选择“{name}”，或使用二维码页面。",
     "Get LocalSend":
         "获取 LocalSend",
     "Idle · making a PDF from phone photos":
@@ -7832,8 +7936,8 @@ UI_ZH = {
         "Windows 现在可能会询问 {app} 是否可以使用网络。\n\n勾选“专用网络”并点击“允许”，手机才能连接到这台电脑。",
     "The phone connection could not start. Another program may be using the network ports {ports}.":
         "无法启动手机连接。可能有其他程序正在使用网络端口 {ports}。",
-    "Receiving is off. Press Phone to open it again.":
-        "接收已关闭。按“手机”可重新开启。",
+    "Receiving is off. Press LocalSend to open it again.":
+        "接收已关闭。按“LocalSend”可重新开启。",
     "Receiving is on: the phone can send files to “{name}”.":
         "接收已开启：手机可以向“{name}”发送文件。",
     "Receiving is on for {time}: the phone can send files to “{name}”.":
@@ -9412,18 +9516,20 @@ class PhoneDialog(QDialog):
     def __init__(self, window):
         super().__init__(window)
         self.main = window
-        self.setWindowTitle(f"{APP_NAME} · {tr('Phone')}")
+        self.setWindowTitle(f"{APP_NAME} · LocalSend")
         self.setMinimumWidth(780)
         self.files = []
         self.sending = False
         self.cancel_send = False
+        self.setAcceptDrops(True)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(24, 20, 24, 18)
         outer.setSpacing(12)
-        heading = QLabel(tr("Send to your phone"))
+        heading = QLabel(tr("Send with LocalSend"))
         heading.setObjectName("pageTitle")
         outer.addWidget(heading)
-        note = QLabel(tr("Phone and computer must be on the same Wi-Fi."))
+        note = QLabel(tr("Phones and computers (Windows, Mac, Linux) on the same Wi-Fi or network. "
+                         "You can also drag files here."))
         note.setObjectName("hint")
         outer.addWidget(note)
 
@@ -9453,7 +9559,7 @@ class PhoneDialog(QDialog):
         left.setObjectName("section")
         box = QVBoxLayout(left)
         box.setContentsMargins(16, 14, 16, 14)
-        title = QLabel(tr("Phones with LocalSend"))
+        title = QLabel(tr("Devices with LocalSend"))
         title.setObjectName("sectionTitle")
         box.addWidget(title)
         self.devices = QListWidget()
@@ -9589,7 +9695,9 @@ class PhoneDialog(QDialog):
             self.devices.addItem(item)
         model = device.get("deviceModel") or device.get("deviceType") or ""
         item.setText(device["alias"] + "\n" + "  ·  ".join(part for part in (model, device["ip"]) if part))
-        item.setIcon(icon("phone", "accent_text"))
+        desktop = device.get("deviceType") in ("desktop", "server", "headless") or device.get("deviceModel") in (
+            "Windows", "macOS", "Linux")
+        item.setIcon(icon("computer" if desktop else "phone", "accent_text"))
         item.setData(Qt.ItemDataRole.UserRole, device)
         if self.devices.currentRow() < 0:
             self.devices.setCurrentRow(0)
@@ -9672,6 +9780,18 @@ class PhoneDialog(QDialog):
         else:
             self.send_status.setText("⚠ " + messages.get(problem, tr("Sending failed. {error}", error=problem)))
         self.update_buttons()
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        files = [Path(url.toLocalFile()) for url in event.mimeData().urls() if url.isLocalFile()]
+        files = [path for path in files if path.is_file()]
+        if files:
+            self.files = files
+            self.refresh_files()
+            event.acceptProposedAction()
 
     def closeEvent(self, event):
         self.cancel_send = True
@@ -10008,9 +10128,9 @@ class Scanner(QWidget):
         actions.addWidget(self.scan_button, 2)
         self.preview = self.tool_button("eye", tr("Preview"), tr("Quick low-resolution look at the flatbed (Ctrl+P)"),
                                         self.start_preview)
-        self.phone_button = self.tool_button("phone", tr("Phone"),
-                                             tr("Send to your phone or receive photos from it, on the same Wi-Fi "
-                                                "(LocalSend app or QR code)"), self.open_phone)
+        self.phone_button = self.tool_button("phone", "LocalSend",
+                                             tr("Send files to phones and computers, or receive from them, on the "
+                                                "same Wi-Fi (LocalSend, QR code)"), self.open_phone)
         self.text_button = self.tool_button("translate", tr("Text"),
                                             tr("Recognised text and translation of the last scan (Ctrl+T)"),
                                             self.show_text)
@@ -10370,14 +10490,14 @@ class Scanner(QWidget):
         box.addStretch()
 
         # 4 · Phone
-        nav_item("phone", tr("Phone"))
-        page, box = self.settings_page(tr("Phone"), tr(
+        nav_item("phone", "LocalSend")
+        page, box = self.settings_page("LocalSend", tr(
             "Send scans to your phone and receive photos from it, on the same Wi-Fi."))
         form = self.section(box, tr("Receiving from the phone"))
         self.phone_always = self.check(form, "Keep receiving on while the app is open", "phone_always",
                                        False)
         self.phone_always.toggled.connect(self.phone_always_changed)
-        note = QLabel(tr("When this is off, receiving opens for {minutes} minutes each time you press Phone.",
+        note = QLabel(tr("When this is off, receiving opens for {minutes} minutes each time you press LocalSend.",
                          minutes=PHONE_OPEN_MINUTES))
         note.setObjectName("hint")
         note.setWordWrap(True)
@@ -10392,9 +10512,9 @@ class Scanner(QWidget):
         self.phone_name.textChanged.connect(self.phone_name_changed)
         form.addRow(tr("Name on the phone"), self.phone_name)
         form = self.section(box, tr("How it works"))
-        steps = QLabel(tr("1. Phone and computer on the same Wi-Fi.\n"
+        steps = QLabel(tr("1. Phone or computer on the same Wi-Fi.\n"
                           "2. Install the free LocalSend app on the phone, or simply scan the QR code.\n"
-                          "3. Press Phone, next to Preview, choose the phone and Send.\n"
+                          "3. Press LocalSend, next to Preview, choose the phone or computer and Send.\n"
                           "4. To send from the phone: in LocalSend choose “{name}”, or use the QR page.",
                           name=self.phone_name.text()))
         steps.setWordWrap(True)
@@ -11590,6 +11710,12 @@ class Scanner(QWidget):
         """Start receiving: always (Settings) or for a few minutes after pressing Phone."""
         if WINDOWS and not self.settings.value("phone_firewall_ok", False, type=bool):
             self.open_windows_firewall()
+        if MAC and not self.settings.value("mac_network_told", False, type=bool):
+            self.settings.setValue("mac_network_told", True)
+            QMessageBox.information(self, "LocalSend", tr(
+                "macOS may now ask whether {app} can find devices on your local network.\n\n"
+                "Click Allow, so phones and computers can see this Mac. If you clicked Don't Allow before: "
+                "System Settings › Privacy & Security › Local Network › turn on {app}.", app=APP_NAME))
         if self.phone_link is None:
             self.phone_link = PhoneLink(self.phone_name.text().strip() or self.phone_alias(),
                                         QT_CACHE.parent, self.phone_bridge)
@@ -11615,7 +11741,7 @@ class Scanner(QWidget):
         if exists:
             self.settings.setValue("phone_firewall_ok", True)
             return
-        answer = QMessageBox.question(self, tr("Phone"), tr(
+        answer = QMessageBox.question(self, "LocalSend", tr(
             "So that your phone can send to this computer, Windows Firewall must let it in.\n\n"
             "Allow it now? Windows asks for permission once (only phones on your own network, "
             "only the ports of {app}).", app=APP_NAME))
@@ -11668,7 +11794,7 @@ class Scanner(QWidget):
                 self.phone_link.stop()
                 self.phone_timer.stop()
                 if self.phone_dialog:
-                    self.phone_dialog.receive_label.setText(tr("Receiving is off. Press Phone to open it again."))
+                    self.phone_dialog.receive_label.setText(tr("Receiving is off. Press LocalSend to open it again."))
                 return
         if self.phone_dialog:
             name = self.phone_link.alias

@@ -25,7 +25,7 @@ and a status light that shows when someone else on the network is using the scan
   - Languages download automatically the first time they are used.
 - **Translation** of the recognised text with Google Translate (free), MyMemory (free) or your own LibreTranslate server, either automatically after every scan or from the Text window.
 - **Paper source "Auto":** uses the document feeder when it has paper, otherwise the flatbed glass.
-- **Send to your phone** on the same Wi-Fi: phones with the free LocalSend app, a QR code page for any phone, and AirDrop on a Mac. Photos from the phone can be saved or turned into a PDF like a scan.
+- **LocalSend** on the same network: send to and receive from phones and computers (Windows, Mac, Linux) with What the Scan or the free LocalSend app, a QR code page for any phone, and AirDrop on a Mac. Photos from the phone can be saved or turned into a PDF like a scan.
 - **11 languages:** English, Ελληνικά, Français, Deutsch, Italiano, Español, Română, Čeština, Русский, 日本語, 中文 (简体). **Auto / Light / Dark** theme.
 - **Drivers:**
   - Epson L14150 and Canon PIXMA TS3150: one-click driver install, with the publisher signature checked. See [Epson Scan 2 driver](#epson-scan-2-driver-epson-l14150-and-other-epson-scanners).
